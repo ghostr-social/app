@@ -15,7 +15,7 @@ fn integrity_quarantine_revokes_live_delivery_identity() {
         catalog.deliverable_transfer_identity(&post, SOURCE),
         Some(identity.clone())
     );
-    catalog.quarantine_mirror_group(&identity, &digest, 1);
+    catalog.quarantine_source(&identity, &digest, 1);
     assert_eq!(catalog.transfer_identity(&post, SOURCE), Some(identity));
     assert!(catalog
         .deliverable_transfer_identity(&post, SOURCE)

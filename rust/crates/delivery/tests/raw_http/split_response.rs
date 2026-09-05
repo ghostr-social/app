@@ -1,6 +1,6 @@
-use super::answer_once;
+use super::body_request::accept_body;
 use std::sync::Arc;
-use tokio::io::{AsyncReadExt as _, AsyncWriteExt as _};
+use tokio::io::AsyncWriteExt as _;
 use tokio::net::TcpListener;
 use tokio::sync::{oneshot, Notify};
 use tokio::task::JoinHandle;
@@ -48,12 +48,7 @@ async fn spawn(
     let (sent, prefix_sent) = oneshot::channel();
     let (request_sent, body_request) = oneshot::channel();
     let requests = tokio::spawn(async move {
-        answer_once(&listener, probe).await;
-        let (mut socket, _) = listener.accept().await.expect("body request");
-        let mut request = vec![0; 4096];
-        let length = socket.read(&mut request).await.expect("read body request");
-        assert!(length > 0, "the downloader must send a body request");
-        request.truncate(length);
+        let (mut socket, request) = accept_body(&listener, probe).await;
         request_sent.send(request).ok();
         header_release.notified().await;
         socket.write_all(prefix).await.expect("write prefix");

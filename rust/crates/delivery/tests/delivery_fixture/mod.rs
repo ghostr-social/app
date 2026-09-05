@@ -38,7 +38,6 @@ pub mod playback;
 pub mod pressure_origin;
 pub mod pressure_store;
 pub mod probe_origins;
-pub mod protected_capacity;
 pub mod retry;
 pub mod stats;
 pub mod transient_origin;

@@ -8,6 +8,7 @@ import 'package:video_player_platform_interface/video_player_platform_interface.
 
 import '../support/recording_playback_telemetry_port.dart';
 import '../support/playback_delivery_fixture.dart';
+import '../support/playback_authority_fixture.dart';
 import '../support/scripted_video_player_platform.dart';
 import '../support/video_player_surface_pump.dart';
 
@@ -25,6 +26,7 @@ void main() {
       videoId: PlaybackVideoId.parse('clip'),
       isActive: true,
       playbackDeliveryId: testCanonicalPlaybackDeliveryId,
+      hlsAuthority: testHlsPlaybackAuthority(),
     );
 
     await _pump(tester, port, request);
@@ -77,5 +79,6 @@ VideoPlaybackSurfaceRequest _activity(
     videoId: request.videoId,
     isActive: isActive,
     playbackDeliveryId: request.playbackDeliveryId,
+    hlsAuthority: request.hlsAuthority,
   );
 }

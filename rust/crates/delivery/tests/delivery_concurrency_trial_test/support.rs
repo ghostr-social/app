@@ -13,8 +13,8 @@ pub(super) async fn next_request(
 ) -> ActiveRequest {
     match tokio::time::timeout(Duration::from_secs(10), origin.next()).await {
         Ok(request) => request,
-        Err(_) => panic!(
-            "{phase} timed out; decisions={}",
+        Err(error) => panic!(
+            "{phase} timed out: {error}; decisions={}",
             handle
                 .decision_history_json()
                 .expect("serializable diagnostic evidence")
@@ -54,15 +54,11 @@ pub(super) fn decision_sequence(handle: &DeliveryHandle) -> u64 {
 
 fn latest_decision(history: &str) -> Option<(u64, bool)> {
     let value = serde_json::from_str::<serde_json::Value>(history).ok()?;
-    value["decisions"]["records"]
-        .as_array()
-        .and_then(|records| records.last())
-        .and_then(|record| {
-            Some((
-                record["sequence"].as_u64()?,
-                record["warp_decision"]["additional_request_slot_demanded"].as_bool()?,
-            ))
-        })
+    let record = value["decisions"]["records"].as_array()?.last()?;
+    Some((
+        record["sequence"].as_u64()?,
+        record["warp_decision"]["additional_request_slot_demanded"].as_bool()?,
+    ))
 }
 
 fn history(handle: &DeliveryHandle) -> String {

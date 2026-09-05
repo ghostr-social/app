@@ -8,7 +8,10 @@ void main() {
     const objectLength = 293999;
     final requests = [
       _completedRange(0, 65536),
-      _completedRange(65536, objectLength),
+      _completedRange(65536, 99072),
+      _completedRange(99072, 110229),
+      _completedRange(110229, 119804),
+      _completedRange(119804, objectLength),
     ];
 
     expect(

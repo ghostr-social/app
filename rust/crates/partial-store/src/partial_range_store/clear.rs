@@ -28,7 +28,7 @@ impl PartialRangeStore {
         result
     }
 
-    async fn discard_keys(
+    pub(super) async fn discard_keys(
         &self,
         entries: &mut super::Entries,
         keys: BTreeSet<String>,

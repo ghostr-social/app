@@ -10,7 +10,8 @@ fn one_resource_sample_updates_shadow_prices_exactly_once() {
     let input = snapshot(2, 8_000_000, 8_000, 20);
     let base = AdaptivePlayabilityPolicy.plan(&input);
     let first = feedback(7);
-    let mut planner = WarpPlanner::default();
+    let mut planner =
+        WarpPlanner::new(crate::adaptive::WarpPlannerConfig::default().with_lookahead());
     let context = PlannerContext::explicitly_unavailable(&input).with_feedback(first);
 
     let once = planner.plan(WarpPlannerInput::new(

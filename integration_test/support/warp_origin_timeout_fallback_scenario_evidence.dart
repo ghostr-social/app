@@ -21,7 +21,9 @@ bool warpOriginTimeoutHasBoundedExactFallback(
   required int objectLength,
 }) {
   final gets = requests.where((request) => request.method == 'GET').toList();
-  if (gets.isEmpty || gets.length > 4) return false;
+  // Adaptive dependency closures can split the fallback into more than four
+  // requests. Keep a request-storm guard alongside exact once-only coverage.
+  if (gets.isEmpty || gets.length > 8) return false;
   if (gets.any((request) => !_isCompletedFallbackBody(request))) return false;
   return ProgressiveOriginCoverage.fromRequests(
     gets,

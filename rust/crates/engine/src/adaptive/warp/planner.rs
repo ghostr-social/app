@@ -1,4 +1,5 @@
 mod capacity_demand;
+mod demand;
 mod feasibility;
 mod feedback;
 mod least_risk;
@@ -18,7 +19,7 @@ pub use reserve::{
     ReserveDegradedReason,
 };
 pub(crate) use search_replay::{SearchReplayInput, SearchReplayMode};
-pub(crate) use types::ReserveProgressPolicy;
+pub(crate) use types::{PlannerProfile, ReserveProgressPolicy};
 pub use types::{SemanticDecision, WarpPlannerConfig, WarpPlannerInput, WarpPlanningDecision};
 
 use super::{
@@ -54,8 +55,9 @@ impl WarpPlanner {
     fn plan_with_generation_policies(
         &mut self,
         input: WarpPlannerInput<'_>,
-        policies: WarpGenerationPolicies,
+        mut policies: WarpGenerationPolicies,
     ) -> WarpPlanningDecision {
+        policies.hedging = self.config.profile == PlannerProfile::Lookahead1;
         let planner_replay = PlannerReplayCapsule::capture(&input, self, policies);
         feedback::observe(self, &input);
         self.prepare_network(&input);
@@ -77,13 +79,7 @@ impl WarpPlanner {
             self.additional_request_slot_demanded(&input, &frontier.retained, network_bytes);
         let selected = selection::selected_action(&generated.actions, &search);
         let common_random_seed = simulation::common_seed(&input, self.price_epoch);
-        let evaluation = selected.as_ref().map(|item| {
-            self.twin.evaluate(
-                &simulation::state(&input),
-                core::slice::from_ref(&item.node),
-                simulation::epochs(&input, self.price_epoch),
-            )
-        });
+        let evaluation = simulation::evaluate(self, &input, selected.as_ref());
         WarpPlanningDecision {
             pruned_action_ids: selection::pruned_ids(&generated.actions, &feasible.nodes),
             admissible_action_ids: feasible.nodes.iter().map(|node| node.id).collect(),

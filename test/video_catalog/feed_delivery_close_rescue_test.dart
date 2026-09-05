@@ -21,7 +21,9 @@ void main() {
         engagement: source,
         optional: FeedOptionalDependencies(
           focus: focus,
-          delivery: FeedDeliveryDependencies(deliveryUpdates: delivery),
+          delivery: FeedDeliveryDependencies.withReadyRescue(
+            deliveryUpdates: delivery,
+          ),
           watch: FeedWatchDependencies(
             tracker: WatchHistoryTracker(
               history: history,

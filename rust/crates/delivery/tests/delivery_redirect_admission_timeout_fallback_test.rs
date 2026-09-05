@@ -18,7 +18,7 @@ async fn expired_redirect_admission_yields_to_body() {
     let requests = media_client();
     requests.update_limits(MediaRequestLimits::try_new(2, 1).expect("request limits"));
     let occupied = requests
-        .get(&origin.blocked_url, PreemptionAuthority::Transition)
+        .get(&origin.blocked_url, PreemptionAuthority::PlaybackCritical)
         .expect("blocked request")
         .admit()
         .await

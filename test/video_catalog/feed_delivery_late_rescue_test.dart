@@ -28,7 +28,7 @@ void main() {
         engagement: repository,
         optional: FeedOptionalDependencies(
           focus: focus,
-          delivery: FeedDeliveryDependencies(
+          delivery: FeedDeliveryDependencies.withReadyRescue(
             deliveryUpdates: updates,
             preparationUpdates: preparation,
           ),

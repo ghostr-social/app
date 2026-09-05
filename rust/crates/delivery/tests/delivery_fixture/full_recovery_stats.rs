@@ -59,7 +59,8 @@ pub async fn assert_admission(path: &Path, query: &OriginQuery, expected: Admiss
         stats
             .origin_model()
             .circuit_admission(query, unix_time_ms()),
-        expected
+        expected,
+        "completed trial updates delivery statistics"
     );
 }
 

@@ -1,10 +1,7 @@
 use super::fusion;
-use super::{
-    Confidence, Evidence, EvidenceAssessment, EvidenceScope, EvidenceSource, EvidenceValidator,
-    EvidenceValue,
-};
+use super::{Evidence, EvidenceAssessment, EvidenceSource, EvidenceValidator, EvidenceValue};
 use serde::{Deserialize, Serialize};
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 
 const RECORD_CAPACITY: usize = 128;
 
@@ -23,7 +20,6 @@ pub struct EvidenceLedger {
     validators: BTreeMap<String, EvidenceValidator>,
     #[serde(default)]
     validator_times: BTreeMap<String, super::EvidenceTime>,
-    quarantined_digests: BTreeSet<String>,
     capacity: usize,
 }
 
@@ -37,7 +33,6 @@ impl Default for EvidenceLedger {
             records: Vec::new(),
             validators: BTreeMap::new(),
             validator_times: BTreeMap::new(),
-            quarantined_digests: BTreeSet::new(),
             capacity: RECORD_CAPACITY,
         }
     }
@@ -59,28 +54,6 @@ impl EvidenceLedger {
 
     pub(crate) fn assessment(&self, url: &str, now_ms: u64) -> EvidenceAssessment {
         fusion::assess(&self.records, url, now_ms)
-    }
-
-    pub(crate) fn quarantine_digest(
-        &mut self,
-        digest: &str,
-        origin: &str,
-        observed_at_ms: u64,
-    ) -> EvidenceInvalidation {
-        self.quarantined_digests.insert(digest.to_ascii_lowercase());
-        let mut result = self.invalidate_mirror_evidence(observed_at_ms);
-        self.record(Evidence::new(
-            EvidenceValue::IntegrityMatch {
-                digest: digest.to_ascii_lowercase(),
-                matches: false,
-            },
-            EvidenceSource::hash(origin),
-            observed_at_ms,
-            Confidence::certain(),
-            EvidenceScope::ImmutableBytes(digest.to_ascii_lowercase()),
-        ));
-        result.integrity_evidence = true;
-        result
     }
 
     pub(crate) fn invalidate_parser(&mut self, observed_at_ms: u64) -> EvidenceInvalidation {
@@ -107,17 +80,6 @@ impl EvidenceLedger {
             if same {
                 note_invalidation(&mut result, item, observed_at_ms);
             }
-        }
-        result
-    }
-
-    fn invalidate_mirror_evidence(&mut self, observed_at_ms: u64) -> EvidenceInvalidation {
-        let mut result = EvidenceInvalidation::default();
-        for item in &mut self.records {
-            if matches!(item.source, EvidenceSource::Nostr { .. }) {
-                continue;
-            }
-            note_invalidation(&mut result, item, observed_at_ms);
         }
         result
     }

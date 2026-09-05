@@ -24,3 +24,17 @@ pub(super) fn epochs(input: &WarpPlannerInput<'_>, price_epoch: u64) -> TwinEpoc
 pub(super) fn common_seed(input: &WarpPlannerInput<'_>, price_epoch: u64) -> u64 {
     DigitalTwin::common_random_seed(&state(input), epochs(input, price_epoch))
 }
+
+pub(super) fn evaluate(
+    planner: &mut super::WarpPlanner,
+    input: &WarpPlannerInput<'_>,
+    selected: Option<&crate::adaptive::GeneratedAction>,
+) -> Option<crate::adaptive::TwinEvaluation> {
+    let selected =
+        selected.filter(|_| planner.config.profile == super::PlannerProfile::Lookahead1)?;
+    Some(planner.twin.evaluate(
+        &state(input),
+        core::slice::from_ref(&selected.node),
+        epochs(input, planner.price_epoch),
+    ))
+}

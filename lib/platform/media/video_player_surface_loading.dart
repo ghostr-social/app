@@ -33,10 +33,10 @@ extension _VideoPlayerSurfaceLoading on _VideoPlayerSurfaceState {
     return _resolveControllerAcquisition(acquisition, cancellation);
   }
 
-  _ControllerPermit? _resolveControllerAcquisition(
+  Future<_ControllerPermit?> _resolveControllerAcquisition(
     _ControllerAcquisition acquisition,
     Completer<void> cancellation,
-  ) {
+  ) async {
     if (_isClosing || cancellation.isCompleted) {
       if (acquisition case _ControllerGranted(:final permit)) permit.release();
       return null;
@@ -46,9 +46,12 @@ extension _VideoPlayerSurfaceLoading on _VideoPlayerSurfaceState {
         return permit;
       case _ControllerCancelled():
         return null;
-      case _ControllerExhausted():
+      case _ControllerExhausted(:final recovered):
         _refresh(() => _recoveryState = _VideoPlayerRecoveryState.exhausted);
-        return null;
+        await Future.any([recovered, _closing.future, cancellation.future]);
+        if (_isClosing || cancellation.isCompleted) return null;
+        _refresh(() => _recoveryState = _VideoPlayerRecoveryState.ready);
+        return _acquireControllerPermit(cancellation);
     }
   }
 

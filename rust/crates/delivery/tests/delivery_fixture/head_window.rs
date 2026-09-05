@@ -2,9 +2,9 @@
 
 use super::items::{focus_now, unsized_item};
 use super::media::{hit_log, hits, media_body, serve_recording, HitLog};
+use core::time::Duration;
 use ghostr_delivery::delivery_events::{DeliveryHandle, FocusItem};
 use std::sync::Arc;
-use std::time::Duration;
 
 pub struct VisibleCurrent {
     item: FocusItem,
@@ -41,6 +41,9 @@ impl VisibleCurrent {
         })
         .await
         .expect("visible current GET");
-        assert!(hits(&self.log).iter().all(|hit| !hit.contains(":HEAD:")));
+        assert!(
+            hits(&self.log).iter().all(|hit| !hit.contains(":HEAD:")),
+            "visible playback bypasses HEAD"
+        );
     }
 }

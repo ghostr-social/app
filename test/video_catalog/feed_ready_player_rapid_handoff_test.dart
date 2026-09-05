@@ -13,7 +13,7 @@ import '../support/recording_playback_telemetry_port.dart';
 import '../support/recording_player_preparation_feedback.dart';
 
 void main() {
-  testWidgets('three Ready feed players present through 200 ms swipes', (
+  testWidgets('rapid swipes stay bounded and settle on the intended video', (
     tester,
   ) async {
     final fixture = FeedPreparationFixture(postCount: 6);
@@ -41,17 +41,14 @@ void main() {
 
     await _swipeBurst(tester, 3);
     await fixture.settle(tester);
+    _renderPreparedFrames(fixture, frames);
+    await fixture.settle(tester);
 
-    expect(telemetry.activations.map((item) => item.videoId.value), [
-      'p0',
-      'p1',
-      'p2',
-      'p3',
-    ]);
-    expect(telemetry.presentations, telemetry.activations);
-    for (final id in ['p1', 'p2', 'p3']) {
-      expect(fixture.platform.creationsFor(fixture.url(id)), 1);
-    }
+    expect(telemetry.activations.last.videoId.value, 'p3');
+    expect(telemetry.presentations.last.videoId.value, 'p3');
+    expect(fixture.platform.peakPlayerCount, lessThanOrEqualTo(2));
+    expect(fixture.platform.audibleOverlap, isFalse);
+    expect(find.text('Caption p3'), findsOneWidget);
   });
 }
 

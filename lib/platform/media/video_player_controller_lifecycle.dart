@@ -33,7 +33,12 @@ final class _VideoPlayerControllerLifecycle {
   final Expando<_ControllerSettlement> _disposals = Expando();
   final Set<_ControllerSettlement> _pendingDisposals = {};
   final Map<VideoPlayerController, _ControllerPermit> _permits = {};
-  var _hasUnprovenTeardown = false;
+  final Set<VideoPlayerController> _unproven = {};
+  Completer<void>? _proofRecovery;
+
+  Future<void> get proofRecovered => _unproven.isEmpty
+      ? Future<void>.value()
+      : (_proofRecovery ??= Completer<void>()).future;
 
   void attach(VideoPlayerController controller, _ControllerPermit permit) {
     assert(!_permits.containsKey(controller));
@@ -45,7 +50,7 @@ final class _VideoPlayerControllerLifecycle {
   Future<bool> waitControllers() async {
     while (true) {
       final pending = _pendingSettlements();
-      if (pending.isEmpty) return !_hasUnprovenTeardown;
+      if (pending.isEmpty) return _unproven.isEmpty;
       await Future.wait(pending.map((settlement) => settlement.outcome));
     }
   }
@@ -71,7 +76,7 @@ final class _VideoPlayerControllerLifecycle {
   }
 
   _ControllerTeardownRequirement get _settledRequirement {
-    return _hasUnprovenTeardown
+    return _unproven.isNotEmpty
         ? _ControllerTeardownRequirement.unproven
         : _ControllerTeardownRequirement.proven;
   }
@@ -110,7 +115,13 @@ final class _VideoPlayerControllerLifecycle {
     _ControllerTeardownOutcome outcome,
   ) {
     if (outcome == _ControllerTeardownOutcome.unproven) {
-      _hasUnprovenTeardown = true;
+      _unproven.add(controller);
+    } else {
+      _unproven.remove(controller);
+      if (_unproven.isEmpty) {
+        _proofRecovery?.complete();
+        _proofRecovery = null;
+      }
     }
     try {
       _onTeardown(controller, outcome);

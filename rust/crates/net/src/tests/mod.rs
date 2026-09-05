@@ -1,4 +1,9 @@
 mod content_range_test;
+mod internet_allowance_accounting_test;
+mod internet_allowance_cancellation_test;
+mod internet_allowance_corruption_test;
+mod internet_allowance_crash_recovery_test;
+mod internet_allowance_restart_test;
 mod outbound_media_redirect_credentials_test;
 mod outbound_media_redirect_policy_test;
 mod redirect_execution_fixture;

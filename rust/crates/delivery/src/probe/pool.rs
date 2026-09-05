@@ -33,6 +33,7 @@ pub(crate) struct MetadataProbePool {
 struct ActiveProbe {
     identity: TransferIdentity,
     result_current: bool,
+    task: Option<tokio::task::AbortHandle>,
 }
 
 impl ActiveProbe {
@@ -40,6 +41,14 @@ impl ActiveProbe {
         Self {
             identity,
             result_current: true,
+            task: None,
+        }
+    }
+
+    fn cancel(&mut self) {
+        self.result_current = false;
+        if let Some(task) = &self.task {
+            task.abort();
         }
     }
 }
@@ -91,9 +100,7 @@ impl MetadataProbePool {
     }
 
     pub fn clear(&mut self) {
-        self.probing
-            .values_mut()
-            .for_each(|probe| probe.result_current = false);
+        self.probing.values_mut().for_each(ActiveProbe::cancel);
         self.probed.clear();
         self.deferred.clear();
         self.head_unavailable.clear();
@@ -101,12 +108,23 @@ impl MetadataProbePool {
 
     pub(crate) fn representation_changed(&mut self, post: &PostId) {
         if let Some(probe) = self.probing.get_mut(post) {
-            probe.result_current = false;
+            probe.cancel();
         }
         self.probed.retain(|identity, _| identity.post() != post);
         self.deferred.retain(|identity| identity.post() != post);
         self.head_unavailable
             .retain(|identity| identity.post() != post);
+    }
+
+    pub(crate) fn attach_task(&mut self, post: &PostId, task: tokio::task::AbortHandle) {
+        if let Some(probe) = self.probing.get_mut(post) {
+            if !probe.result_current {
+                task.abort();
+            }
+            probe.task = Some(task);
+        } else {
+            task.abort();
+        }
     }
 
     /// Active probes remain counted until completion; only completed

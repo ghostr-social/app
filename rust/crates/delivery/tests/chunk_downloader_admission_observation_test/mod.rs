@@ -74,5 +74,5 @@ impl ObservationFixture {
 }
 
 pub(super) async fn observe() -> Observation {
-    ObservationFixture::new().await.observe().await
+    Box::pin(ObservationFixture::new().await.observe()).await
 }

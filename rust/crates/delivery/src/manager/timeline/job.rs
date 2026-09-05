@@ -5,12 +5,23 @@ use super::TimelineEvidence;
 use ghostr_partial_store::partial_range_store::{PartialRangeStore, RepresentationRead};
 use std::sync::Arc;
 
+mod indexed;
+
 pub(super) async fn run(
     attempt: TimelineAttempt,
     store: Arc<PartialRangeStore>,
     parser: Arc<dyn TimelineParser>,
 ) -> TimelineResult {
-    let outcome = match load_input(&attempt, &store).await {
+    let outcome = indexed::run(&attempt, &store, parser).await;
+    TimelineResult::new(attempt, outcome)
+}
+
+async fn compile(
+    attempt: &TimelineAttempt,
+    store: &PartialRangeStore,
+    parser: Arc<dyn TimelineParser>,
+) -> TimelineJobOutcome {
+    match load_input(attempt, store).await {
         Ok(input) if !attempt.is_cancelled() => {
             let parsed = parse(input, parser, attempt.control()).await;
             if attempt.is_cancelled() {
@@ -21,8 +32,7 @@ pub(super) async fn run(
         }
         Ok(_) => TimelineJobOutcome::Superseded,
         Err(outcome) => outcome,
-    };
-    TimelineResult::new(attempt, outcome)
+    }
 }
 
 async fn load_input(
@@ -71,9 +81,8 @@ async fn ensure_evidence(
         .media_snapshot(expected.binding().post().as_str())
         .await
         .map_err(|error| TimelineJobOutcome::Retryable(TimelineRetry::Read(error.to_string())))?;
-    TimelineEvidence::from_snapshot(expected.binding(), &snapshot)
-        .as_ref()
-        .is_some_and(|current| current.same_parse(expected))
+    expected
+        .still_valid_in(&snapshot)
         .then_some(())
         .ok_or(TimelineJobOutcome::Superseded)
 }

@@ -2,10 +2,9 @@
 mod assertions;
 mod delivery_fixture;
 
-use assertions::{assert_decisions, is_handoff};
+use assertions::assert_decisions;
 use core::time::Duration;
 use delivery_fixture::concurrency_origin::{ActiveRequest, ControlledOrigin};
-use delivery_fixture::decision::wait_for_history;
 use delivery_fixture::evidence::DeliveryEvidence as _;
 use delivery_fixture::items::{focus_now, sized_item};
 use delivery_fixture::options::production_geometry_parallel_options;
@@ -15,7 +14,7 @@ use ghostr_delivery::delivery_events::DeliveryHandle;
 const TOTAL: u64 = 285_652;
 
 #[tokio::test]
-async fn detached_transfer_handoff_is_deferred_until_capacity_frees() {
+async fn detached_transfer_cancels_and_replacement_has_one_owned_request() {
     let mut old = ControlledOrigin::serve(TOTAL).await;
     let mut replacement = ControlledOrigin::serve(TOTAL).await;
     let mut options = production_geometry_parallel_options();
@@ -38,14 +37,6 @@ async fn detached_transfer_handoff_is_deferred_until_capacity_frees() {
     let replacement_request = next_request("replacement", &mut replacement, &harness.handle).await;
     assert_eq!(replacement_request.range.start, 0);
     expect_no_request(&mut replacement).await;
-    wait_for_history(&harness.handle, |history| {
-        history
-            .records
-            .iter()
-            .any(|record| is_handoff(record, cutoff))
-    })
-    .await;
-
     assert_decisions(&harness.handle, cutoff);
     harness.handle.clear().await.expect("valid test fixture");
     std::fs::remove_dir_all(&harness.root).ok();
@@ -79,7 +70,8 @@ async fn expect_no_request(origin: &mut ControlledOrigin) {
     assert!(
         tokio::time::timeout(Duration::from_millis(100), origin.next())
             .await
-            .is_err()
+            .is_err(),
+        "handoff does not start a duplicate request"
     );
 }
 

@@ -61,7 +61,7 @@ async fn transfer(
 }
 
 fn assert_observed(stats: &HostStats, url: &str, network: NetworkClass) {
-    let now = now_ms();
+    let now = wait::now_ms();
     let query = query(url, network, now);
     let estimate = stats
         .origin_model()
@@ -70,7 +70,7 @@ fn assert_observed(stats: &HostStats, url: &str, network: NetworkClass) {
 }
 
 fn assert_unavailable_is_cold(stats: &HostStats, url: &str) {
-    let now = now_ms();
+    let now = wait::now_ms();
     let query = query(url, NetworkClass::Unavailable, now);
     let estimate = stats
         .origin_model()
@@ -89,15 +89,8 @@ fn assert_unavailable_is_cold(stats: &HostStats, url: &str) {
 fn query(url: &str, network: NetworkClass, observed_at_ms: u64) -> OriginQuery {
     OriginQuery::new(
         url,
-        OriginContext::new(RequestMethod::RangeGet, 16, MediaClass::ProgressiveMp4)
+        OriginContext::new(RequestMethod::FullGet, 16, MediaClass::Unknown)
             .with_network(network)
             .with_observed_at_ms(observed_at_ms),
     )
-}
-
-fn now_ms() -> u64 {
-    std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .expect("valid test fixture")
-        .as_millis() as u64
 }

@@ -3,14 +3,20 @@ use ghostr_engine::media_timeline::{parse_mp4_segments, MediaSegment};
 use ghostr_engine::PostId;
 
 pub(super) fn classic_moov(offset: u32, size: u32) -> Vec<u8> {
-    let stts = full_box(b"stts", values(&[1, 1, 1_000]));
+    classic_samples(&[offset], &[size])
+}
+
+pub(super) fn classic_samples(offsets: &[u32], sizes: &[u32]) -> Vec<u8> {
+    assert_eq!(offsets.len(), sizes.len());
+    let count = offsets.len() as u32;
+    let stts = full_box(b"stts", values(&[1, count, 1_000]));
     let stsc = full_box(b"stsc", values(&[1, 1, 1, 1]));
-    let stsz = full_box(b"stsz", values(&[0, 1, size]));
-    let stco = full_box(b"stco", values(&[1, offset]));
+    let stsz = full_box(b"stsz", [values(&[0, count]), values(sizes)].concat());
+    let stco = full_box(b"stco", [values(&[count]), values(offsets)].concat());
     let stbl = atom(b"stbl", joined(&[stts, stsc, stsz, stco]));
     let minf = atom(b"minf", stbl);
     let mut mdhd_body = vec![0; 8];
-    mdhd_body.extend(values(&[1_000, 1_000]));
+    mdhd_body.extend(values(&[1_000, count * 1_000]));
     mdhd_body.extend([0_u8; 4]);
     let mdhd = full_box(b"mdhd", mdhd_body);
     let mdia = atom(b"mdia", joined(&[mdhd, minf]));

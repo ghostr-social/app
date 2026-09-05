@@ -31,7 +31,7 @@ fn has_waiting_candidate(
     })
 }
 
-pub(super) fn admitted_posts(plan: &AllocationPlan, ceiling: usize) -> HashSet<crate::PostId> {
+fn admitted_posts(plan: &AllocationPlan, ceiling: usize) -> HashSet<crate::PostId> {
     let mut admitted = HashSet::new();
     for post in plan
         .allocations
@@ -52,7 +52,7 @@ pub(super) fn upcoming_candidates(snapshot: &PlayabilitySnapshot) -> Vec<&Candid
         .candidates
         .iter()
         .filter(|candidate| {
-            candidate.retrieval_eligible && candidate.post != snapshot.playback.current
+            candidate.retrieval_eligible && (1..=2).contains(&candidate.feed_offset.value())
         })
         .collect();
     candidates.sort_by(|left, right| {

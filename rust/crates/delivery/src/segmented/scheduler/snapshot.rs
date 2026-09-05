@@ -57,7 +57,7 @@ impl SegmentedDelivery {
             .snapshot(post.as_str())
             .authority
             .as_ref()
-            .map_or(Default::default(), |authority| {
+            .map_or_else(Default::default, |authority| {
                 state.hls_player_preparation(authority)
             })
     }

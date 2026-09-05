@@ -13,15 +13,16 @@ pub(crate) struct ProbeLaunch {
 }
 
 /// Starts one HEAD probe under a supervisor that always reports termination.
-pub(crate) fn spawn_probe(ctx: TransferContext, launch: ProbeLaunch) {
+pub(crate) fn spawn_probe(ctx: TransferContext, launch: ProbeLaunch) -> tokio::task::AbortHandle {
+    let events = ctx.events.clone();
+    let worker = tokio::spawn(run_probe(
+        ctx,
+        launch.url.clone(),
+        launch.authority,
+        launch.profile,
+    ));
+    let abort = worker.abort_handle();
     tokio::spawn(async move {
-        let events = ctx.events.clone();
-        let worker = tokio::spawn(run_probe(
-            ctx,
-            launch.url.clone(),
-            launch.authority,
-            launch.profile,
-        ));
         let observed = match worker.await {
             Ok(observed) => observed,
             Err(error) => ObservedProbe {
@@ -40,6 +41,7 @@ pub(crate) fn spawn_probe(ctx: TransferContext, launch: ProbeLaunch) {
         }));
         let _ = events.send(InternalEvent::Transfer(event));
     });
+    abort
 }
 
 async fn run_probe(

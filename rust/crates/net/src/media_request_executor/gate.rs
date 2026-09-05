@@ -5,6 +5,7 @@ use ghostr_engine::RequestAuthority;
 use std::sync::{Arc, Mutex};
 use tokio::sync::oneshot;
 
+mod allowance;
 mod state;
 use state::GateState;
 mod observer;
@@ -18,6 +19,7 @@ pub(super) struct MediaRequestGate {
 struct GateInner {
     state: Mutex<GateState>,
     observer: ResourceObserverSlot,
+    allowance: crate::internet_allowance::InternetAllowance,
 }
 
 pub(super) struct RequestLease {
@@ -25,6 +27,7 @@ pub(super) struct RequestLease {
     authority: RequestAuthority,
     priority: PreemptionAuthority,
     armed: bool,
+    body: Option<crate::internet_allowance::InternetReservation>,
 }
 
 struct ReleasedRequest {
@@ -39,11 +42,15 @@ struct QueuedRequest {
 }
 
 impl MediaRequestGate {
-    pub(super) fn new(limits: MediaRequestLimits) -> Self {
+    pub(super) fn new(
+        limits: MediaRequestLimits,
+        allowance: crate::internet_allowance::InternetAllowance,
+    ) -> Self {
         Self {
             inner: Arc::new(GateInner {
                 state: Mutex::new(GateState::new(limits)),
                 observer: ResourceObserverSlot::default(),
+                allowance,
             }),
         }
     }
@@ -158,12 +165,14 @@ impl RequestLease {
             authority,
             priority,
             armed: true,
+            body: None,
         }
     }
 }
 
 impl Drop for RequestLease {
     fn drop(&mut self) {
+        drop(self.body.take());
         if self.armed {
             self.gate.release(&self.authority, self.priority);
         }

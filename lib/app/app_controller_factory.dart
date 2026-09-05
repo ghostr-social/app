@@ -43,7 +43,7 @@ part 'app_controller_factory_media.dart';
 class AppControllerFactory {
   AppControllerFactory(
     this._dependencies, {
-    FeedFocusPort? feedFocus,
+    FeedFocusSink? feedFocus,
     VideoDeliveryUpdates? deliveryUpdates,
     RustDeliveryConfigUpdater deliveryConfigUpdater =
         updateRustEngineConfiguration,

@@ -11,18 +11,18 @@ void main() {
     addTearDown(fixture.close);
     await fixture.mountAndPublish(tester);
     _expectNearestPrepared(fixture);
-    _expectAbsent(['h3', 'h4']);
-    await fixture.promoteFourthAndReturn(tester);
-    _expectAbsent(['h3', 'h4']);
+    _expectAbsent(['h1', 'h2', 'h3', 'h4']);
+    await fixture.promoteNextAndReturn(tester);
+    _expectAbsent(['h1', 'h2', 'h3', 'h4']);
     tester.binding.handleMemoryPressure();
     await tester.pumpAndSettle();
-    expect(_card('h0'), findsOneWidget);
+    expect(_card('h0'), findsNothing);
     _expectAbsent(['h1', 'h2']);
   });
 }
 
 void _expectNearestPrepared(FutureHlsDecoderFixture fixture) {
-  for (final id in ['h0', 'h1', 'h2']) {
+  for (final id in ['h0']) {
     final request = fixture.request(id);
     expect(request.isActive, isFalse);
     expect(request.hlsAuthority, fixture.authority(id));

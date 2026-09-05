@@ -7,11 +7,10 @@ use delivery_fixture::items::{focus_now, seed_range};
 use delivery_fixture::options::DeliveryOptions;
 use delivery_fixture::start_harness;
 use ghostr_delivery::delivery_events::FocusItem;
-use ghostr_engine::adaptive::RetrievalRequest;
 use ghostr_engine::{DeliveryKind, EngineParams, PostId, VideoMeta};
 
 const SHORT_206: &[u8] = b"HTTP/1.1 206 Partial Content\r\n\
-Content-Type: video/mp4\r\n\
+Cache-Control: public, max-age=3600\r\nContent-Type: video/mp4\r\n\
 Content-Length: 4\r\n\
 Content-Range: bytes 0-3/16\r\n\
 ETag: \"mirror\"\r\n\
@@ -39,7 +38,7 @@ async fn mirror_body_failure_preserves_the_canonical_prefix() {
         .expect("mirror request timeout")
         .expect("mirror request task");
     tokio::task::yield_now().await;
-    wait_for_independent_replan(&harness.handle, &mirror).await;
+    delivery_fixture::wait::wait_not_servable(&harness.posts, "post").await;
 
     assert_eq!(
         harness
@@ -51,28 +50,6 @@ async fn mirror_body_failure_preserves_the_canonical_prefix() {
     );
     harness.handle.clear().await.expect("valid test fixture");
     std::fs::remove_dir_all(harness.root).ok();
-}
-
-async fn wait_for_independent_replan(
-    handle: &ghostr_delivery::delivery_events::DeliveryHandle,
-    mirror: &str,
-) {
-    tokio::time::timeout(Duration::from_secs(1), async {
-        loop {
-            let whole = handle.plan_history().iter().any(|evidence| {
-                evidence.plan.allocations.iter().any(|allocation| {
-                    allocation.source == mirror
-                        && matches!(allocation.request, RetrievalRequest::FetchWhole { .. })
-                })
-            });
-            if whole {
-                return;
-            }
-            tokio::task::yield_now().await;
-        }
-    })
-    .await
-    .expect("incompatible mirror response replans as an independent object");
 }
 
 fn mirrored_item(primary: &str, mirror: &str) -> FocusItem {

@@ -22,7 +22,7 @@ fn ready_preview_reduces_marginal_quality_and_can_change_selected_post() {
 fn selected(preview: PreviewAvailability) -> PostId {
     let mut input = snapshot(2, 100_000_000, 20_000, 0);
     input.candidates.iter_mut().for_each(|candidate| {
-        candidate.view_probability = ViewProbability::new(0.5).expect("valid test fixture");
+        candidate.view_probability = ViewProbability::new(0.5).expect("fixture");
         candidate.present.push(candidate.playable_ranges[0].bytes);
     });
     let base = AdaptivePlayabilityPolicy.plan(&input);
@@ -36,7 +36,7 @@ fn selected(preview: PreviewAvailability) -> PostId {
         .with_head_probe_history(&p1, HeadProbeHistory::Completed);
     let config = WarpPlannerConfig {
         beam: BeamConfig::new(1, 32, 256, u64::MAX),
-        ..WarpPlannerConfig::default()
+        ..WarpPlannerConfig::default().with_lookahead()
     };
     WarpPlanner::new(config)
         .plan(WarpPlannerInput::new(

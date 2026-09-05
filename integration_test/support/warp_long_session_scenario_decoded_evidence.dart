@@ -76,4 +76,16 @@ extension _WarpLongSessionDecodedEvidence on _WarpLongSessionDriver {
             '${record.outcome.bytes}',
       )
       .join('|');
+  String _timeoutEvidence(Duration timeout, String? awaiting) {
+    final loaded = graph.cubit.state;
+    final active = loaded is FeedLoaded
+        ? '${loaded.activeIndex}:${loaded.posts[loaded.activeIndex].id.value}'
+        : 'none';
+    return 'Long WARP session timed out after $timeout; '
+        'awaiting=${awaiting ?? 'condition'}, activePage=$active, '
+        'state=${graph.cubit.state.runtimeType}, posts=$_loadedPostCount, '
+        'focuses=${graph.focus.occurrences.length}, handoffs=$handoffs, '
+        'players=$peakMountedPlayers, requests=${origin.requests.length}, '
+        'active=${origin.activeIncompleteRequestSequences}.';
+  }
 }

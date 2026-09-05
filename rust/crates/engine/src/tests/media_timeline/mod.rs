@@ -1,5 +1,7 @@
 mod cmaf_sidx_timeline_test;
 mod cmaf_sidx_validation_test;
+mod compiled_index_roundtrip_test;
+mod continuation_dependency_window_test;
 mod fast_start_remux_evidence_test;
 mod fragmented_init_timeline_test;
 mod malformed_timeline_test;
@@ -10,6 +12,13 @@ mod mp4_segment_geometry_test;
 mod mp4_table_validation_test;
 mod mp4_table_variants_test;
 mod mp4_vbr_timeline_test;
+mod startup_continuation_cushion_test;
 mod startup_footprint_validation_test;
 mod startup_topology_validation_test;
 mod tail_moov_timeline_test;
+
+mod startup_composition_dependency_test;
+mod startup_sample_description_test;
+mod startup_selected_track_duration_test;
+mod startup_sync_dependency_test;
+mod startup_unsupported_edit_test;

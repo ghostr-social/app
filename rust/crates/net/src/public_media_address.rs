@@ -28,6 +28,10 @@ pub fn validate_url(url: &Url) -> Result<()> {
     if !url.username().is_empty() || url.password().is_some() {
         return Err(permanent("media URL credentials are forbidden"));
     }
+    let expected_port = if url.scheme() == "https" { 443 } else { 80 };
+    if url.port_or_known_default() != Some(expected_port) {
+        return Err(permanent("media URL port is not allowed"));
+    }
     let host = url
         .host_str()
         .ok_or_else(|| permanent("media URL host is missing"))?;
@@ -43,7 +47,7 @@ fn parse_ip(host: &str) -> Option<IpAddr> {
         .or_else(|| host.strip_prefix('[')?.strip_suffix(']')?.parse().ok())
 }
 
-pub fn is_public(address: IpAddr) -> bool {
+pub(crate) fn is_public(address: IpAddr) -> bool {
     match address {
         IpAddr::V4(address) => is_public_v4(address),
         IpAddr::V6(address) => is_public_v6(address),

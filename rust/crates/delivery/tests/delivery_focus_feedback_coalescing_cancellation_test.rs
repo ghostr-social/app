@@ -22,9 +22,7 @@ async fn pending_roster_feedback_cannot_hide_reverse_focus_cancellation() {
         production_geometry_parallel_options(),
     );
     seed_prefix(&harness, &items).await;
-    for (generation, current) in (1..=4).zip(0..=3) {
-        fixture::focus_and_wait(&harness, &items, current, generation).await;
-    }
+    fixture::focus_and_wait(&harness, &items, 5, 4).await;
     let request = tokio::time::timeout(Duration::from_secs(10), held.next())
         .await
         .expect("future request starts");

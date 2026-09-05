@@ -34,22 +34,21 @@ pub async fn response(
         .await
         .ok();
     reply(
-        request_status(&content),
+        request_status(content.as_deref()),
         length,
         content,
         Body::from_stream(ReceiverStream::new(stream)),
     )
 }
 
-fn request_status(range: &Option<String>) -> StatusCode {
-    range
-        .as_ref()
-        .map_or(StatusCode::OK, |_| StatusCode::PARTIAL_CONTENT)
+fn request_status(range: Option<&str>) -> StatusCode {
+    range.map_or(StatusCode::OK, |_| StatusCode::PARTIAL_CONTENT)
 }
 
 fn reply(status: StatusCode, length: u64, range: Option<String>, body: Body) -> Response {
     let mut builder = Response::builder()
         .status(status)
+        .header(header::CACHE_CONTROL, "public, max-age=3600")
         .header(header::CONTENT_TYPE, "video/mp4")
         .header(header::ACCEPT_RANGES, "bytes")
         .header(header::ETAG, "\"fixture-concurrency\"")

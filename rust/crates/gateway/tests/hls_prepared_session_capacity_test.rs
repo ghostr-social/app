@@ -38,7 +38,6 @@ async fn prepared_authority_and_sources_share_one_bounded_admission() {
         .acquire_prepared(&delivery.segmented, request())
         .await
         .is_err());
-    assert_eq!(sessions.authority(&first).await, Some(authority.clone()));
     assert!(sessions.release(&first).await);
     assert!(sessions
         .acquire_prepared(&delivery.segmented, request())

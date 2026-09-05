@@ -17,8 +17,8 @@ pub enum RecordedRetrievalRequest {
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct RecordedPromotionGrant {
-    pub maximum_bytes: u64,
-    pub valid_until_ms: u64,
+    pub(crate) maximum_bytes: u64,
+    pub(crate) valid_until_ms: u64,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]

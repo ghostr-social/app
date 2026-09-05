@@ -1,19 +1,6 @@
 part of 'warp_bandwidth_recovery_scenario.dart';
 
-const _transitionPaths = {
-  '/current.mp4',
-  '/next.mp4',
-  '/third.mp4',
-  '/fourth.mp4',
-  '/fifth.mp4',
-  '/sixth.mp4',
-  '/seventh.mp4',
-  '/eighth.mp4',
-  '/ninth.mp4',
-  '/tenth.mp4',
-};
-
-Future<_PacedFeed> _openPacedFeed(WidgetTester tester) async {
+Future<WarpFeedPlaybackJourney> _openPacedFeed(WidgetTester tester) async {
   final journey = await WarpFeedPlaybackJourney.start(
     options: const WarpFeedDeviceOptions(
       events: SignedWarpFeedConfig(eventCount: 10),
@@ -25,52 +12,41 @@ Future<_PacedFeed> _openPacedFeed(WidgetTester tester) async {
     ),
   );
   addTearDown(journey.close);
-  final origin = journey.resources.origin;
-  await _loadPacedFeed(tester, journey);
-  final startup = await journey.waitForPublishedFocus(tester, 0);
-  await journey.waitForFirstFrame(tester, startup);
-  await journey.waitForPlaying(tester, startup);
-  journey.reportStartup(startup);
-  expect(
-    journey.telemetry.probe.playingLatency(startup),
-    lessThanOrEqualTo(deviceStartupTarget),
-  );
-  final profile = origin.currentLinkProfile!;
-  await journey.waitForParallelRangedVideos(tester);
-  final window = await journey.waitForConfirmedLinkWindow(
-    tester,
-    profile.generation,
-    minimumDuration: const Duration(milliseconds: 1500),
-  );
-  final generation = journey.focus.generationFor(startup)!;
-  final paired = await _waitForBaselinePair(
-    tester,
-    journey,
-    window.confirmedAtEpochMs,
-    generation,
-  );
-  _reportBaseline(paired.decision);
-  final trigger = origin.armBandwidthChangeAfterNextConfirmedChunk(
-    _transitionPaths,
-    bandwidthKbps: 700,
-  );
-  journey.reportPlan(paired.plan);
-  return (
-    journey: journey,
-    startup: startup,
-    focusGeneration: generation,
-    lossTrigger: trigger,
-    fastProfile: profile,
-    baselineDecision: paired.decision,
-  );
-}
-
-Future<void> _loadPacedFeed(
-  WidgetTester tester,
-  WarpFeedPlaybackJourney journey,
-) async {
   await tester.pumpWidget(journey.app);
   journey.load();
   await journey.waitForCaption(tester, 0);
   await journey.waitForPostCount(tester, 10);
+  await _expectMoving(
+    tester,
+    journey,
+    await journey.waitForPublishedFocus(tester, 0),
+  );
+  return journey;
+}
+
+Future<WarpDecisionRecord> _baseline(
+  WidgetTester tester,
+  WarpFeedPlaybackJourney journey,
+) => journey.waitForDecision(
+  tester,
+  (decision) =>
+      decision.networkThroughputBps >= 1000000 &&
+      decision.appliesMeasuredNetworkRate,
+);
+
+Future<void> _expectMoving(
+  WidgetTester tester,
+  WarpFeedPlaybackJourney journey,
+  PlaybackFocus focus,
+) async {
+  await journey.waitForFirstFrame(tester, focus);
+  await journey.waitForPlaying(tester, focus);
+  final position = journey.telemetry.probe.latestPositionFor(focus)!;
+  await journey.pumpFor(tester, const Duration(milliseconds: 500));
+  expect(
+    journey.telemetry.probe.latestPositionFor(focus),
+    greaterThan(position),
+  );
+  expect(find.text('Video unavailable'), findsNothing);
+  expect(journey.focus.hadTransportRescue, isFalse);
 }

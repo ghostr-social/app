@@ -10,12 +10,12 @@ fn defaults_match_the_plan_parameter_table() {
 }
 
 #[test]
-fn concurrency_scales_with_the_data_usage_level() {
+fn default_concurrency_requires_measurement_before_expansion() {
     let params = EngineParams::default();
     let cases = [
         (DataUsageLevel::Conservative, 2),
-        (DataUsageLevel::Balanced, 3),
-        (DataUsageLevel::Aggressive, 4),
+        (DataUsageLevel::Balanced, 2),
+        (DataUsageLevel::Aggressive, 2),
     ];
 
     for (level, expected) in cases {

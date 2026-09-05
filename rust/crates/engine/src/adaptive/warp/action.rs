@@ -54,7 +54,7 @@ impl Default for ActionForecast {
 pub struct ActionNode {
     pub id: u16,
     pub post: PostId,
-    pub kind: ActionKind,
+    pub(crate) kind: ActionKind,
     pub(crate) value: ActionValue,
     pub resources: ResourceCost,
     resource_authority: Option<ResourceCost>,

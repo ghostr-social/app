@@ -3,6 +3,8 @@ use crate::adaptive::ActionNode;
 
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub enum SearchPruneReason {
+    OptimizationDisabled,
+    DemandedInput,
     HardBudget,
     MutuallyExclusive,
     BeamWidth,

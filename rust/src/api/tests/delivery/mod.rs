@@ -1,3 +1,4 @@
+mod capability_renewal_fixture;
 mod data_usage_mapping_test;
 mod delivery_kind_mapping_test;
 mod delivery_preparation_authority_alignment_test;

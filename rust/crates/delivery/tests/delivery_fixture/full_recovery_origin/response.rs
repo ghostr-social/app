@@ -27,16 +27,16 @@ pub(super) async fn answer(
         })
         .await
         .ok();
-    response(total, range, method, stream)
+    response(total, range.as_deref(), &method, stream)
 }
 
 fn response(
     total: usize,
-    range: Option<String>,
-    method: Method,
+    range: Option<&str>,
+    method: &Method,
     stream: mpsc::Receiver<Result<Bytes, Infallible>>,
 ) -> Response {
-    let requested = range.as_deref().map(|value| bounds(value, total));
+    let requested = range.map(|value| bounds(value, total));
     let partial = requested.is_some();
     let status = if partial {
         StatusCode::PARTIAL_CONTENT

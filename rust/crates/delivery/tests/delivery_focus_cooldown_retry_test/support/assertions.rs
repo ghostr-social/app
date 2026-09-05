@@ -22,6 +22,7 @@ pub fn assert_no_selected_action(handle: &DeliveryHandle, plan: &PlanEvidence) {
         DecisionOutcome::Succeeded {
             bytes: 0,
             elapsed_ms: 0,
-        }
+        },
+        "cooldown produces the expected terminal outcome"
     );
 }

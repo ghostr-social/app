@@ -9,7 +9,7 @@ final class _WarpCachePressureDriver {
   late PlaybackDeliveryId coldDelivery;
   late int coldPlayerGeneration;
   var forwardHandoffs = 0;
-  var coldRequestsBeforeReturn = 0;
+  var coldBytesBeforeReturn = 0;
   var peakMountedPlayers = 0;
   var peakControllerCapacity = 0;
   var unavailableWasVisible = false;
@@ -22,7 +22,7 @@ final class _WarpCachePressureDriver {
   Future<void> run() async {
     await _open();
     await _driveUntilColdEvicted();
-    coldRequestsBeforeReturn = origin.requestsFor('long-00').length;
+    coldBytesBeforeReturn = origin.bytesServed('long-00');
     final returned = await _returnToCold();
     await _expectDecodedAndAdvancing(returned);
     await _expectPressureContract();

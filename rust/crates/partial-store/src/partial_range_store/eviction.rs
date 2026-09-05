@@ -19,12 +19,11 @@ pub(super) fn victims(
     entries: &Entries,
     staged: &BTreeMap<String, u64>,
     wanted: u64,
-    protected: &str,
     leased: &dyn Fn(&str) -> bool,
 ) -> Vec<String> {
     let mut candidates: Vec<Candidate<'_>> = entries
         .iter()
-        .filter(|(key, _)| key.as_str() != protected && !leased(key))
+        .filter(|(key, _)| !leased(key))
         .map(|(key, entry)| candidate(key, entry, staged.get(key).copied().unwrap_or_default()))
         .collect();
     candidates.sort_by_key(|candidate| (candidate.touched, candidate.key));

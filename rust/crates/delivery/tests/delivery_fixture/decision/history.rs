@@ -29,10 +29,10 @@ pub async fn wait_for_history_with_limit(
         }
     })
     .await;
-    transition.unwrap_or_else(|error| panic_timeout(error, handle));
+    transition.unwrap_or_else(|error| panic_timeout(&error, handle));
 }
 
-fn panic_timeout(error: tokio::time::error::Elapsed, handle: &DeliveryHandle) -> ! {
+fn panic_timeout(error: &tokio::time::error::Elapsed, handle: &DeliveryHandle) -> ! {
     let history = handle.decision_history();
     let last = history
         .records

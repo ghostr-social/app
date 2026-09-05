@@ -97,6 +97,8 @@ pub struct RecordedPrunedSearchPlan {
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum RecordedSearchPruneReason {
+    OptimizationDisabled,
+    DemandedInput,
     HardBudget,
     MutuallyExclusive,
     BeamWidth,

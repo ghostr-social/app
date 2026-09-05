@@ -84,7 +84,6 @@ final class FeedPreparationFixture {
     await gesture.moveBy(Offset(0, -height * 0.23));
     await tester.pump(const Duration(milliseconds: 16));
     await gesture.up();
-    await tester.pumpAndSettle();
     await settle(tester);
   }
 
@@ -92,9 +91,10 @@ final class FeedPreparationFixture {
       _preparationAsset(posts, id).media.playbackUri.toString();
 
   Future<void> settle(WidgetTester tester) async {
-    await tester.pump();
+    for (var turn = 0; turn < 3; turn++) {
+      await tester.pump(const Duration(milliseconds: 20));
+      await tester.runAsync(() => Future<void>.delayed(Duration.zero));
+    }
     await tester.pumpAndSettle(const Duration(milliseconds: 20));
-    await tester.runAsync(() => Future<void>.delayed(Duration.zero));
-    await tester.pump();
   }
 }

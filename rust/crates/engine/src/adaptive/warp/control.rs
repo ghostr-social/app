@@ -119,6 +119,8 @@ fn action_network_bytes(action: &ActionKind) -> u64 {
 fn identity_allows(action: &ActionKind, identity: IdentityProof) -> bool {
     match action {
         ActionKind::FetchWhole { .. } => !matches!(identity, IdentityProof::Unverified),
-        _ => matches!(identity, IdentityProof::VerifiedHash(_)),
+        // A past whole-file match cannot authenticate bytes fetched later.
+        // Range races require a bound block verifier, which CORE/3 does not enable.
+        _ => false,
     }
 }

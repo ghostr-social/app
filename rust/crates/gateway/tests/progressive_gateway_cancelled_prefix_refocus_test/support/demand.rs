@@ -1,6 +1,6 @@
 use crate::gateway_fixture::progressive_delivery::ProgressiveDeliveryHarness;
+use core::time::Duration;
 use ghostr_delivery::playback_demand::{ConsumerId, DemandState};
-use std::time::Duration;
 
 pub async fn wait_for_blocked(
     harness: &ProgressiveDeliveryHarness,

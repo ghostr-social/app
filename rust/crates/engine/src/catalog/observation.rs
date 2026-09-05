@@ -83,7 +83,8 @@ impl Catalog {
         })
     }
 
-    pub fn quarantine_mirror_group(
+    /// Rejects only this presentation's failed endpoint, never a digest's other claimants.
+    pub fn quarantine_source(
         &mut self,
         identity: &TransferIdentity,
         digest: &str,
@@ -92,31 +93,12 @@ impl Catalog {
         if !self.identity_claims_digest(identity, digest) {
             return Vec::new();
         }
-        if self.quarantined_digests.insert(digest.to_ascii_lowercase()) {
-            self.reliability_revision = self.reliability_revision.saturating_add(1);
+        self.reject_source(identity, digest);
+        if let Some(entry) = self.entries.get_mut(identity.post()) {
+            entry.record_source_mismatch(digest, identity.source().as_str(), observed_at_ms);
         }
-        let origin = identity.source().as_str().to_owned();
-        let labels: Vec<_> = self
-            .entries
-            .values()
-            .filter(|entry| advertised_digest(entry, digest))
-            .flat_map(|entry| entry.hash_labels(digest, false, observed_at_ms))
-            .collect();
-        let mut posts: Vec<_> = self
-            .digest_claims
-            .get(&digest.to_ascii_lowercase())
-            .into_iter()
-            .flatten()
-            .cloned()
-            .collect();
-        for post in &posts {
-            if let Some(entry) = self.entries.get_mut(post) {
-                entry.quarantine_integrity(digest, &origin, observed_at_ms);
-            }
-        }
-        posts.sort();
-        self.observe_labels(labels, observed_at_ms);
-        posts
+        self.apply_known_quarantine(identity.post());
+        vec![identity.post().clone()]
     }
 
     fn learn_http_identity(

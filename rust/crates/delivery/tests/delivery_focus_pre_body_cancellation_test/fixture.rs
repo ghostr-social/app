@@ -7,8 +7,9 @@ use core::time::Duration;
 use ghostr_delivery::delivery_events::{DeliveryFocus, FocusAdmission, FocusGeneration, FocusItem};
 
 pub(super) async fn seed_prefix(harness: &DeliveryHarness, items: &[FocusItem]) {
+    let bytes = vec![7; TOTAL as usize];
     for item in &items[..6] {
-        seed_range(&harness.store, item, 0, &[7; TOTAL as usize]).await;
+        seed_range(&harness.store, item, 0, &bytes).await;
     }
 }
 
@@ -20,14 +21,19 @@ pub(super) async fn focus_and_wait(
 ) {
     let after = harness.handle.latest_plan().map_or(0, |plan| plan.revision);
     let focus = generated_focus(items.to_vec(), current, generation);
-    assert_eq!(harness.handle.update_focus(focus), FocusAdmission::Accepted);
+    assert_eq!(
+        harness.handle.update_focus(focus),
+        FocusAdmission::Accepted,
+        "focus generation is accepted"
+    );
     let plan = wait_for_plan(&harness.handle, after, |plan| {
         plan.focus_generation == Some(generation)
     })
     .await;
     assert_eq!(
         plan.current.as_ref().map(|post| post.as_str()),
-        Some(ids()[current])
+        Some(ids()[current]),
+        "plan follows the selected item"
     );
 }
 

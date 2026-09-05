@@ -24,6 +24,8 @@ grep -Fq 'sh -c' "$dir/command.txt"
 grep -Eq '^[0-9a-f]{40}$' "$dir/commit.txt"
 grep -Fq 'exit=3' "$dir/summary.txt"
 grep -Fq 'no device' "$dir/device.txt"
+grep -Eq '^[0-9a-f]{64}$' "$dir/source-before.sha256"
+cmp "$dir/source-before.sha256" "$dir/source-after.sha256"
 
 set +e
 sh "$root/tool/run_warp_evidence.sh" none >/dev/null 2>&1

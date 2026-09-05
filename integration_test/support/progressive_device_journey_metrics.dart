@@ -3,7 +3,14 @@ part of 'progressive_device_journey.dart';
 extension ProgressiveDeviceJourneyMetrics on ProgressiveDeviceJourney {
   int get currentOriginBytes => origin.bytesServed('current');
 
-  bool get headsRemainBlocked => origin.headsRemainBlocked;
+  bool get playbackBypassedHeadResponses {
+    final heads = origin.requests.where((request) => request.method == 'HEAD');
+    return heads.isNotEmpty &&
+        heads.every(
+          (request) =>
+              request.outcome != ProgressiveOriginRequestOutcome.completed,
+        );
+  }
 
   Set<String> get submittedPlaybackDeliveryIds =>
       _telemetry.observedDeliveryIds;

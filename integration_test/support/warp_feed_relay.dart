@@ -20,6 +20,7 @@ final class WarpFeedRelay {
   final HttpServer _server;
   final List<Nip01Event> _events;
   final _sockets = <WebSocket>{};
+  var _closing = false;
   late final StreamSubscription<HttpRequest> _subscription;
   var acceptedConnections = 0;
   var requestMessages = 0;
@@ -37,6 +38,7 @@ final class WarpFeedRelay {
       return request.response.close();
     }
     final socket = await WebSocketTransformer.upgrade(request);
+    if (_closing) return socket.close();
     acceptedConnections += 1;
     _sockets.add(socket);
     unawaited(_serve(socket));
@@ -45,7 +47,7 @@ final class WarpFeedRelay {
   Future<void> _serve(WebSocket socket) async {
     try {
       await for (final message in socket) {
-        await _handle(socket, message);
+        _handle(socket, message);
       }
     } finally {
       _sockets.remove(socket);
@@ -53,10 +55,11 @@ final class WarpFeedRelay {
   }
 
   Future<void> close() async {
+    _closing = true;
+    await _subscription.cancel();
     for (final socket in _sockets.toList()) {
       await socket.close();
     }
-    await _subscription.cancel();
     await _server.close(force: true);
   }
 }

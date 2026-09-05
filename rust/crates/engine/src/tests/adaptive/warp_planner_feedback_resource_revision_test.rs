@@ -9,7 +9,8 @@ use crate::tests::adaptive_support::snapshot;
 fn within_interval_changes_wait_for_the_next_controller_sample() {
     let input = snapshot(2, 8_000_000, 8_000, 20);
     let base = AdaptivePlayabilityPolicy.plan(&input);
-    let mut planner = WarpPlanner::default();
+    let mut planner =
+        WarpPlanner::new(crate::adaptive::WarpPlannerConfig::default().with_lookahead());
     let once = plan(&mut planner, &input, &base, feedback(200, 2));
     let request_changed = plan(&mut planner, &input, &base, feedback(300, 4));
 

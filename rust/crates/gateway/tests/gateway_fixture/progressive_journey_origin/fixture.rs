@@ -30,3 +30,7 @@ fn source_mp4() -> Vec<u8> {
         .decode(encoded)
         .expect("progressive MP4 fixture")
 }
+
+pub(crate) fn supported_mp4() -> Vec<u8> {
+    super::fixture_supported::without_identity_edit(progressive_mp4())
+}

@@ -7,7 +7,7 @@ void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
   testWidgets(
-    'real Android feed rescues only to a player-verified frame',
+    'blocked playback preserves intent without a prepared rescue candidate',
     runWarpPlayerVerifiedRescueScenario,
   );
 }

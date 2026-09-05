@@ -94,3 +94,5 @@ impl Drop for ProgressiveJourneyOrigin {
         self.server.abort();
     }
 }
+
+mod fixture_supported;

@@ -43,6 +43,9 @@ impl FetchProblem {
     }
 
     pub(in crate::segmented::fetch) fn transport(error: anyhow::Error) -> Self {
+        if error.is::<ghostr_net::internet_allowance::InternetAdmissionDenied>() {
+            return Self::neutral(error, ErrorReason::Policy);
+        }
         if admission_timed_out(&error) {
             return Self::neutral(error, ErrorReason::Timeout);
         }

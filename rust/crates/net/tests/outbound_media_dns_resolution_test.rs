@@ -40,7 +40,7 @@ async fn allows_a_hostname_only_after_its_resolution_is_public() {
 #[tokio::test]
 async fn system_resolution_rejects_localhost_before_connecting() {
     let client = MediaHttpClient::public().expect("media client");
-    let request = client.get("http://localhost:9/video.mp4").expect("request");
+    let request = client.get("http://localhost/video.mp4").expect("request");
 
     let result = tokio::time::timeout(Duration::from_secs(1), request.send())
         .await

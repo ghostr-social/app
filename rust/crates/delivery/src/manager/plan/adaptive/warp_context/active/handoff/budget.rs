@@ -76,7 +76,7 @@ fn seed_existing(budget: &mut RequestBudget, inputs: &PlanInputs<'_>, scoped: &H
         .for_each(|source| budget.occupy(source));
 }
 
-fn missing_critical_source<'a>(input: Input<'a>) -> Option<&'a str> {
+fn missing_critical_source(input: Input<'_>) -> Option<&str> {
     input
         .base
         .allocations

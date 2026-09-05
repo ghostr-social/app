@@ -47,7 +47,10 @@ impl DeliveryWorker {
                 self.save_capability().await;
             }
             MaintenanceEvent::SaveQoe => self.qoe.save_now().await,
-            MaintenanceEvent::StoreCapacityChanged(value) => self.resume_store_capacity(value),
+            MaintenanceEvent::StoreCapacityChanged(value) => {
+                self.resume_store_capacity(value);
+                self.bind_representations().await;
+            }
         }
     }
 }

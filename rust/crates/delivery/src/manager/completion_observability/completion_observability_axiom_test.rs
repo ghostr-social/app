@@ -1,3 +1,4 @@
+use super::adaptation::exploration_cost;
 pub(super) use super::{decision_outcome, transfer_event};
 
 #[path = "exploration_cost_test.rs"]

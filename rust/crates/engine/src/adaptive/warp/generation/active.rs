@@ -67,7 +67,7 @@ impl Builder<'_> {
         active: &InFlightAction,
         context: &ActivePlannerContext,
     ) {
-        if !self.permits_request(candidate) {
+        if !self.generation_policies.hedging || !self.permits_request(candidate) {
             return;
         }
         let Some((input, proof, alternate)) = context.hedge() else {

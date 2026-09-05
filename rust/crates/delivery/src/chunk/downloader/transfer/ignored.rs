@@ -37,6 +37,7 @@ fn observe<W: ChunkWrite + ?Sized>(
         input.generation.resumable(),
         ResponseWriteMode::Sparse,
         input.evidence,
-    );
+    )
+    .with_retention(input.generation.retention());
     input.traffic.response_observed(response);
 }

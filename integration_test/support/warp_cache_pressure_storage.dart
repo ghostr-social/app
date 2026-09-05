@@ -17,10 +17,20 @@ Future<WarpCacheCoverage> readWarpCacheCoverage(Directory support) async {
   final result = <String, int>{};
   await for (final entity in root.list()) {
     if (entity is! File || !entity.path.endsWith('.ranges.json')) continue;
-    final entry = await _readManifest(entity);
-    result[entry.deliveryId] = entry.coveredBytes;
+    final entry = await readWarpCacheManifest(entity);
+    if (entry != null) result[entry.deliveryId] = entry.coveredBytes;
   }
   return WarpCacheCoverage(Map.unmodifiable(result));
+}
+
+Future<({String deliveryId, int coveredBytes})?> readWarpCacheManifest(
+  File file,
+) async {
+  try {
+    return await _readManifest(file);
+  } on PathNotFoundException {
+    return null;
+  }
 }
 
 Future<({String deliveryId, int coveredBytes})> _readManifest(File file) async {

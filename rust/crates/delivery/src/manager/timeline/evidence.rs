@@ -5,7 +5,12 @@ use ghostr_partial_store::partial_range_store::{
     ContentRevision, StoredEvidenceId, StoredMediaSnapshot,
 };
 
-const TIMELINE_PARSER_PROFILE: u16 = 3;
+const TIMELINE_PARSER_PROFILE: u16 = 4;
+
+pub(super) type TimelineIndexSource = (
+    ghostr_engine::representation::TransferIdentity,
+    ghostr_engine::representation::SourceGeneration,
+);
 
 #[derive(Clone)]
 pub(crate) struct TimelineEvidence {
@@ -15,6 +20,7 @@ pub(crate) struct TimelineEvidence {
     spans: Vec<ByteRange>,
     stored: StoredEvidenceId,
     parser_profile: u16,
+    pub(super) source: Option<TimelineIndexSource>,
 }
 
 impl core::fmt::Debug for TimelineEvidence {
@@ -49,6 +55,7 @@ impl TimelineEvidence {
             spans,
             stored,
             parser_profile: TIMELINE_PARSER_PROFILE,
+            source: None,
         })
     }
 
@@ -74,6 +81,7 @@ impl TimelineEvidence {
             && self.spans == other.spans
             && self.stored == other.stored
             && self.parser_profile == other.parser_profile
+            && self.source == other.source
     }
 
     pub(super) fn still_valid_in(&self, snapshot: &StoredMediaSnapshot) -> bool {

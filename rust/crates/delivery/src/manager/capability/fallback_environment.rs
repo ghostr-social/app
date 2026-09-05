@@ -3,6 +3,7 @@ use crate::debug::network::NetworkThrottle;
 use crate::delivery_events::{DeliveryCandidate, DeliveryFocus, FocusItem};
 use crate::manager::{DeliveryManagerConfig, DeliveryTuning};
 use crate::segmented::SegmentedCache;
+use core::sync::atomic::{AtomicU64, Ordering};
 use ghostr_engine::video_rendition::VideoRendition;
 use ghostr_engine::{DataUsageLevel, DeliveryKind, EngineParams, PostId, VideoMeta};
 use ghostr_net::media_request_executor::{MediaRequestExecutor, MediaRequestLimits};
@@ -10,7 +11,6 @@ use ghostr_net::outbound_media_client::MediaHttpRequests;
 use ghostr_partial_store::partial_range_store::capacity::StoreCapacity;
 use ghostr_partial_store::partial_range_store::PartialRangeStore;
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use tokio::sync::Mutex;
 

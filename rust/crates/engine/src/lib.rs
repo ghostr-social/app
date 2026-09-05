@@ -139,8 +139,8 @@ impl Default for EngineParams {
             chunk_bytes: 1024 * 1024,
             commitment_ms: 3_000,
             conservative_concurrency: 2,
-            balanced_concurrency: 3,
-            aggressive_concurrency: 4,
+            balanced_concurrency: 2,
+            aggressive_concurrency: 2,
             assumed_bitrate_bps: 2_500_000,
         }
     }

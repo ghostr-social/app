@@ -15,6 +15,7 @@ use nostr_sdk::Client;
 use std::{io, path::PathBuf, sync::Arc};
 use tokio::{net::TcpListener, sync::watch};
 
+mod access_reset;
 mod hls_playback;
 mod media;
 mod progressive;
@@ -24,6 +25,9 @@ pub struct GatewayConfiguration {
     pub relays: Vec<String>,
     pub max_parallel_downloads: usize,
     pub max_storage_bytes: u64,
+    /// Cumulative allowance for this cache/accounting partition. It never refills
+    /// on a rate, connectivity, process, or player lifecycle change.
+    pub internet_data_limit: ghostr_net::internet_allowance::InternetDataLimit,
     pub network_status: ghostr_delivery::delivery_events::DeliveryNetworkStatus,
     pub device_integration_origin: Option<String>,
 }
@@ -113,8 +117,13 @@ async fn start_with_media(
     media: Arc<dyn MediaHttpRequests>,
 ) -> anyhow::Result<(String, GatewayRuntime, watch::Receiver<DiscoveryDemand>)> {
     validate(&configuration)?;
-    let requests = media::executor(media, configuration.max_parallel_downloads)?;
     prepare_native_cache_directory(&configuration.cache_directory)?;
+    let requests = media::executor(
+        media,
+        configuration.max_parallel_downloads,
+        &configuration.cache_directory,
+        configuration.internet_data_limit,
+    )?;
     let listener = TcpListener::bind("127.0.0.1:0").await?;
     let address = listener.local_addr()?;
     let endpoint = address.to_string();

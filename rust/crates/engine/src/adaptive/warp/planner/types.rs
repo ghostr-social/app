@@ -13,6 +13,7 @@ mod api_test;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct WarpPlannerConfig {
+    pub(crate) profile: PlannerProfile,
     pub(crate) beam: BeamConfig,
     pub(crate) twin: TwinConfig,
     pub(crate) semantic_top_k: usize,
@@ -20,6 +21,14 @@ pub struct WarpPlannerConfig {
     pub(crate) safety_rescue_bps: u16,
     pub(crate) emergency_rescue_bps: u16,
     pub(crate) reserve_progress_policy: ReserveProgressPolicy,
+}
+
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub(crate) enum PlannerProfile {
+    #[default]
+    Core3,
+    Lookahead1,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -30,6 +39,7 @@ pub(crate) enum ReserveProgressPolicy {
 impl Default for WarpPlannerConfig {
     fn default() -> Self {
         Self {
+            profile: PlannerProfile::Core3,
             beam: BeamConfig::new(4, 32, 256, 2_000),
             twin: TwinConfig::new(48, 9_500),
             semantic_top_k: 5,

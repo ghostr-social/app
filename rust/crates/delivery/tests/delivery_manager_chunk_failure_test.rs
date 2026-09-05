@@ -36,8 +36,14 @@ async fn assert_direct_full_get(request: JoinHandle<Vec<u8>>) {
         .expect("bounded direct full GET")
         .expect("valid test fixture");
     let request = String::from_utf8(request).expect("HTTP request text");
-    assert!(request.starts_with("GET /video.mp4 HTTP/1.1\r\n"));
-    assert!(!request.to_ascii_lowercase().contains("\r\nrange:"));
+    assert!(
+        request.starts_with("GET /video.mp4 HTTP/1.1\r\n"),
+        "ordinary fallback uses a full GET"
+    );
+    assert!(
+        !request.to_ascii_lowercase().contains("\r\nrange:"),
+        "ordinary fallback omits Range"
+    );
 }
 
 async fn assert_failure_recorded(harness: &DeliveryHarness, origin: &str) {
@@ -47,11 +53,17 @@ async fn assert_failure_recorded(harness: &DeliveryHarness, origin: &str) {
     })
     .await;
 
-    assert!(stats.failure_ratio(&host) > 0.0);
-    assert!(harness
-        .store
-        .present_ranges("failed")
-        .await
-        .expect("valid test fixture")
-        .is_empty());
+    assert!(
+        stats.failure_ratio(&host) > 0.0,
+        "origin failure updates its statistics"
+    );
+    assert!(
+        harness
+            .store
+            .present_ranges("failed")
+            .await
+            .expect("valid test fixture")
+            .is_empty(),
+        "failed response does not create cached bytes"
+    );
 }

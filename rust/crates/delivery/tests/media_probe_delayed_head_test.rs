@@ -43,7 +43,10 @@ async fn delayed_head(delay: Duration) -> (String, tokio::task::JoinHandle<()>) 
     let request = tokio::spawn(async move {
         let (mut socket, _) = listener.accept().await.expect("request");
         let mut request = [0; 4_096];
-        assert!(socket.read(&mut request).await.expect("HEAD request") > 0);
+        assert!(
+            socket.read(&mut request).await.expect("HEAD request") > 0,
+            "origin receives the HEAD request"
+        );
         tokio::time::sleep(delay).await;
         socket.write_all(HEAD).await.expect("HEAD response");
     });

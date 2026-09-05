@@ -12,38 +12,37 @@ use ghostr_engine::host_stats::{HostStats, ThroughputSample};
 use ghostr_engine::{ByteRange, DataUsageLevel, DeliveryKind, EngineParams, PostId, VideoMeta};
 use std::collections::{HashMap, HashSet};
 
+pub(super) const OBJECT_BYTES: u64 = 20_000;
+
 pub(super) fn demand_plan(demanded: ByteRange) -> PlannedWork {
-    build_demand_plan(demanded, false)
+    build_demand_plan(demanded, false, OBJECT_BYTES)
 }
 pub(super) fn buffered_demand_plan(demanded: ByteRange) -> PlannedWork {
-    build_demand_plan(demanded, true)
+    build_demand_plan(demanded, true, OBJECT_BYTES)
 }
-fn build_demand_plan(demanded: ByteRange, buffered: bool) -> PlannedWork {
+pub(super) fn sized_demand_plan(demanded: ByteRange, size_bytes: u64) -> PlannedWork {
+    build_demand_plan(demanded, false, size_bytes)
+}
+fn build_demand_plan(demanded: ByteRange, buffered: bool, size_bytes: u64) -> PlannedWork {
     let post = PostId::new("current");
-    let mut state = state(&post);
+    let mut state = state(&post, size_bytes);
     if buffered {
         state.apply_playback(&playback_for(post.clone(), 10_000));
     }
-    let stats = stats(buffered);
     let retry = RetryBook::new(RetryPolicy::default());
-    let demanded = HashMap::from([(post.clone(), demanded)]);
-    let independent_sources = HashMap::new();
-    let whole_body_exhaustions = HashMap::new();
-    let completed_head_probes = HashSet::new();
-    let revisions = HashMap::new();
     planned_work(
         &state,
         &PlanInputs {
-            stats: &stats,
+            stats: &stats(buffered),
             retry: &retry,
             present: &HashMap::new(),
             finalized: &HashSet::new(),
             stored_totals: &HashMap::new(),
             continuation_sources: &HashMap::new(),
-            revisions: &revisions,
-            independent_sources: &independent_sources,
-            whole_body_exhaustions: &whole_body_exhaustions,
-            completed_head_probes: &completed_head_probes,
+            revisions: &HashMap::new(),
+            independent_sources: &HashMap::new(),
+            whole_body_exhaustions: &HashMap::new(),
+            completed_head_probes: &HashSet::new(),
             unavailable_head_probes: &HashSet::new(),
             in_flight: &[],
             active_head_probes: &[],
@@ -59,7 +58,7 @@ fn build_demand_plan(demanded: ByteRange, buffered: bool) -> PlannedWork {
             resource_feedback: None,
             capacity_revision: 0,
             observed_at_ms: 1,
-            demanded: &demanded,
+            demanded: &HashMap::from([(post.clone(), demanded)]),
         },
     )
 }
@@ -67,20 +66,20 @@ fn build_demand_plan(demanded: ByteRange, buffered: bool) -> PlannedWork {
 fn stats(buffered: bool) -> HostStats {
     let mut stats = HostStats::new();
     if buffered {
-        let sample = ThroughputSample::new(1_000_000, Duration::from_secs(1), 1_000, 1)
-            .expect("valid test fixture");
+        let sample =
+            ThroughputSample::new(1_000_000, Duration::from_secs(1), 1_000, 1).expect("fixture");
         stats.record_overall_throughput(sample);
         stats.record_host_throughput("media.example", sample);
     }
     stats
 }
 
-fn state(post: &PostId) -> DeliveryState {
+fn state(post: &PostId, size_bytes: u64) -> DeliveryState {
     let meta = VideoMeta {
         urls: vec!["https://media.example/video.mp4".into()],
         delivery: DeliveryKind::Progressive,
         sha256: None,
-        size_bytes: Some(20_000),
+        size_bytes: Some(size_bytes),
         duration_ms: Some(1_000),
     };
     let mut state = DeliveryState::new(EngineParams::default(), DataUsageLevel::Balanced);

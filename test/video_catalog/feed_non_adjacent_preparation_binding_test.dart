@@ -18,7 +18,9 @@ void main() {
 
     final deep = playback.requests
         .whereType<PreparedProgressiveVideoPlaybackRequest>()
-        .where((request) => request.prepared.authority.deliveryId.value == 'p2');
-    expect(deep.map((request) => request.videoId?.value).toSet(), {'p2'});
+        .where(
+          (request) => request.prepared.authority.deliveryId.value == 'p2',
+        );
+    expect(deep, isEmpty);
   });
 }

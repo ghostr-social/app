@@ -1,9 +1,9 @@
 use super::super::PlanInputs;
 use crate::manager::inflight::ActiveAction;
 use crate::manager::state::DeliveryState;
+use core::cmp::Reverse;
 use ghostr_engine::adaptive::{AllocationPlan, RetrievalRequest, MEDIA_BOOTSTRAP_PROBE_BYTES};
 use ghostr_engine::ActionId;
-use std::cmp::Reverse;
 use std::collections::HashSet;
 
 mod budget;
@@ -67,7 +67,7 @@ impl Admission {
     }
 }
 
-fn candidates<'a>(input: Input<'a>) -> Vec<Candidate<'a>> {
+fn candidates(input: Input<'_>) -> Vec<Candidate<'_>> {
     input
         .inputs
         .in_flight

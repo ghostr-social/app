@@ -4,7 +4,7 @@ use crate::{ByteRange, PostId};
 use std::collections::HashSet;
 
 #[test]
-fn a_forward_swipe_keeps_only_commitments_that_fit_beside_the_new_edge() {
+fn a_forward_swipe_retires_previous_work_outside_the_protected_window() {
     let mut input = snapshot(7, 20_000_000, 20_000, 6);
     input.playback.current = PostId::new("p3");
     input.network.connection_capacity = 4;
@@ -27,9 +27,8 @@ fn a_forward_swipe_keeps_only_commitments_that_fit_beside_the_new_edge() {
 
     assert!(planned.contains("p4"));
     assert!(planned.contains("p5"));
-    assert!(planned.contains("p6"));
-    assert_eq!(plan.retained.len(), 1, "{plan:#?}");
-    assert_eq!(plan.retained[0].post, PostId::new("p2"));
+    assert!(!planned.contains("p6"));
+    assert!(plan.retained.is_empty(), "{plan:#?}");
 }
 
 fn committed() -> InFlightAction {

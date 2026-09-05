@@ -52,6 +52,9 @@ impl PartialRangeStore {
     ) -> Result<()> {
         let state = self.single_response_actions.lock().await.get(key).cloned();
         if let Some(state) = state.as_ref() {
+            if matches!(state.storage, SingleResponseStorage::Memory) {
+                self.abort_transient(key).await?;
+            }
             if matches!(state.storage, SingleResponseStorage::Staged { .. }) {
                 self.remove_staged_single_response(state).await?;
             }
@@ -123,7 +126,7 @@ impl PartialRangeStore {
             .iter()
             .filter_map(|(key, state)| match state.storage {
                 SingleResponseStorage::Staged { received } => Some((key.clone(), received)),
-                SingleResponseStorage::Live { .. } => None,
+                SingleResponseStorage::Live { .. } | SingleResponseStorage::Memory => None,
             })
             .collect();
         for (key, bytes) in self.session_response_bytes().await {

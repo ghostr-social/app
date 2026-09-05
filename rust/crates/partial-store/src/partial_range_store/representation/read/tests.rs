@@ -9,7 +9,7 @@ use tokio::sync::Mutex;
 
 #[tokio::test]
 async fn an_error_from_a_replaced_stream_is_reported_as_superseded() {
-    let (_root, store) = store();
+    let (_root, store) = store("superseded");
     let revision = ContentRevision::default();
     store.advance_content_revision("clip").await;
 
@@ -25,7 +25,7 @@ async fn an_error_from_a_replaced_stream_is_reported_as_superseded() {
 
 #[tokio::test]
 async fn a_stream_authority_check_preserves_store_failure() {
-    let (root, store) = store();
+    let (root, store) = store("stream-error");
     std::fs::create_dir_all(root.join("clip.transform.video")).expect("valid test fixture");
 
     assert!(store
@@ -36,7 +36,7 @@ async fn a_stream_authority_check_preserves_store_failure() {
 
 #[tokio::test]
 async fn a_representation_authority_check_preserves_store_failure() {
-    let (root, store) = store();
+    let (root, store) = store("representation-error");
     let binding = Catalog::new().upsert(
         PostId::new("clip"),
         VideoMeta {
@@ -52,9 +52,9 @@ async fn a_representation_authority_check_preserves_store_failure() {
     assert!(store.read_for_representation(&binding, 0..1).await.is_err());
 }
 
-fn store() -> (std::path::PathBuf, PartialRangeStore) {
+fn store(scenario: &str) -> (std::path::PathBuf, PartialRangeStore) {
     let root = std::env::temp_dir().join(format!(
-        "ghostr-stale-read-{}-{}",
+        "ghostr-stale-read-{scenario}-{}-{}",
         std::process::id(),
         SystemTime::now()
             .duration_since(UNIX_EPOCH)

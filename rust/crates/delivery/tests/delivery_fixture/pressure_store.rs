@@ -27,7 +27,7 @@ pub fn movable_store(prefix: &str) -> (Arc<PartialRangeStore>, Arc<MutableSpace>
     let space = Arc::new(MutableSpace(AtomicU64::new(16)));
     let capacity = StoreCapacity::new(
         Limits {
-            budget: 16,
+            budget: 32,
             reserve: 0,
         },
         Arc::<MutableSpace>::clone(&space),

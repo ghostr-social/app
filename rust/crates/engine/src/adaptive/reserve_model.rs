@@ -9,7 +9,7 @@ use crate::playback::EstimateConfidence;
 mod coverage;
 mod hls_followup;
 
-const MAX_READY_VIDEOS: usize = 5;
+const MAX_READY_VIDEOS: usize = 2;
 const RESERVE_RISK_BPS: u16 = 500;
 const FORWARD_SWIPE_PRIOR_PER_MINUTE: u64 = 4;
 const MIN_RECOVERY_HORIZON_MS: u64 = 250;

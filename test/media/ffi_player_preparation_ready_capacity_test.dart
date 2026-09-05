@@ -1,24 +1,19 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:ghostr/platform/media/ffi_player_preparation_feedback_port.dart';
 import 'package:ghostr/src/rust/api/delivery_types.dart';
 
 import '../support/drain_test_microtasks.dart';
+import '../support/ffi_preparation_feedback_fixture.dart';
 import '../support/playback_authority_fixture.dart';
 
 void main() {
-  test('seven rendered preparations admit one new initializer', () async {
+  test('one rendered preparation admits the next initializer', () async {
     final sent = <FfiPlayerPreparationReport>[];
-    final feedback = FfiPlayerPreparationFeedbackPort(
-      reportPreparation: ({required input}) async {
-        sent.add(input);
-        return FfiPlayerPreparationDisposition.applied;
-      },
-      playerCapabilityGeneration: BigInt.one,
-      clientEpoch: BigInt.one,
-      monotonicMicros: () => 1,
-    );
+    final feedback = preparationFeedback(({required input}) async {
+      sent.add(input);
+      return FfiPlayerPreparationDisposition.applied;
+    });
 
-    for (var index = 0; index < 7; index += 1) {
+    for (var index = 0; index < 1; index += 1) {
       final attempt = feedback.prepare(
         testPlaybackAuthority(postId: 'ready-$index'),
       );

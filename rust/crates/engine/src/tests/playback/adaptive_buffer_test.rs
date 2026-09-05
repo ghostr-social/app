@@ -45,12 +45,13 @@ fn latency_and_variability_buy_more_reserve_for_the_same_media() {
 }
 
 #[test]
-fn a_host_that_cannot_sustain_playback_uses_the_bounded_maximum() {
+fn a_constrained_host_uses_the_finite_deficit_instead_of_fetching_the_maximum() {
     let policy = AdaptiveBufferPolicy::default();
     let media = MediaConsumption::new(8_000_000, 1_000);
     let constrained = network(700_000, 100_000, 600, EstimateConfidence::High);
 
     let target = policy.target(constrained, media);
 
-    assert_eq!(target.steady(), Duration::from_secs(30));
+    assert!(target.steady() > Duration::from_secs(4));
+    assert!(target.steady() < Duration::from_secs(30));
 }

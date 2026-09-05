@@ -7,7 +7,7 @@ void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
   testWidgets(
-    'malformed 206 bytes cannot outrank a verified rescue frame',
+    'malformed 206 bytes stay unready and manual navigation preserves order',
     runWarpMalformedRangeScenario,
   );
 }

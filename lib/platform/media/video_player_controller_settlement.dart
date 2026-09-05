@@ -57,6 +57,9 @@ final class _ControllerSettlement {
     final exit = await _attemptDisposal();
     if (_settled) {
       _logLateDisposal(exit);
+      if (exit == _ControllerTeardownExit.proven) {
+        _notify(_ControllerTeardownOutcome.proven);
+      }
       return;
     }
     final outcome = exit == _ControllerTeardownExit.proven
@@ -114,6 +117,11 @@ final class _ControllerSettlement {
     _deadline?.cancel();
     _deadline = null;
     _demands.clear();
+    _notify(outcome);
+    _completion.complete(outcome);
+  }
+
+  void _notify(_ControllerTeardownOutcome outcome) {
     try {
       _onSettled(outcome);
     } on Object catch (error, stackTrace) {
@@ -123,8 +131,6 @@ final class _ControllerSettlement {
         error: error,
         stackTrace: stackTrace,
       );
-    } finally {
-      _completion.complete(outcome);
     }
   }
 

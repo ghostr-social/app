@@ -6,7 +6,7 @@ use crate::ByteRange;
 fn a_useful_live_commitment_survives_small_network_replanning_without_duplication() {
     let policy = AdaptivePlayabilityPolicy;
     let mut input = snapshot(8, 18_000_000, 20_000, 2);
-    input.candidates[3].in_flight.push(InFlightAction::range(
+    input.candidates[1].in_flight.push(InFlightAction::range(
         crate::ActionId::new(1),
         ByteRange::new(0, 250_000),
         "https://origin.example/media",

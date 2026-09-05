@@ -2,12 +2,12 @@
 
 mod delivery_fixture;
 
+use core::time::Duration;
 use delivery_fixture::clean_eof_origin::serve;
 use delivery_fixture::decision::history::wait_for_history_with_limit;
 use delivery_fixture::items::{focus_now, unsized_item};
 use delivery_fixture::options::DeliveryOptions;
 use delivery_fixture::start_harness;
-use std::time::Duration;
 
 const DIGEST: &str = "9f9f5111f7b27a781f1f1ddde5ebc2dd2b796bfc7365c9c28b548e564176929f";
 const EVIDENCE_WAIT_LIMIT: Duration = Duration::from_secs(30);

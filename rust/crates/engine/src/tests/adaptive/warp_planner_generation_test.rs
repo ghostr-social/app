@@ -26,7 +26,7 @@ fn adaptive_dag_generates_response_ready_promotion_and_control_actions() {
     assert!(kinds
         .iter()
         .any(|kind| matches!(kind, ActionKind::CacheUpgrade(_))));
-    assert!(kinds
+    assert!(!kinds
         .iter()
         .any(|kind| matches!(kind, ActionKind::Hedge { .. })));
     assert!(kinds

@@ -35,8 +35,6 @@ async fn replacement_sessions_pin_disjoint_bootstrap_cohorts() {
     assert_eq!(bootstrap(&router, &fresh_session).await, bodies("new"));
     assert_eq!(old_origin.hits(), old_hits, "old route refetched origin");
     assert_eq!(new_origin.hits(), new_hits, "new route refetched origin");
-    assert_eq!(sessions.authority(&old_session).await, Some(old));
-    assert_eq!(sessions.authority(&fresh_session).await, Some(fresh));
 }
 
 async fn acquire(

@@ -13,7 +13,7 @@ mod whole;
 impl Builder<'_> {
     pub(super) fn add_candidate(&mut self, candidate: &CandidateSnapshot) {
         self.add_head(candidate);
-        if has_active_whole(candidate) {
+        if !(0..=2).contains(&candidate.feed_offset.value()) || has_active_whole(candidate) {
             self.add_active(candidate);
             return;
         }
@@ -36,7 +36,8 @@ impl Builder<'_> {
             .candidate(&candidate.post)
             .is_some_and(|item| item.head_probe != super::super::HeadProbeHistory::Unobserved);
         let current = candidate.post == self.snapshot.playback.current;
-        if !candidate.needs_bootstrap() || current || head_suppressed {
+        let in_window = (1..=8).contains(&candidate.feed_offset.value());
+        if !candidate.needs_bootstrap() || current || head_suppressed || !in_window {
             return;
         }
         let kind = ActionKind::Head;

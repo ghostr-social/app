@@ -844,6 +844,7 @@ dependencies = [
  "ghostr-delivery",
  "ghostr-discovery",
  "ghostr-engine",
+ "ghostr-gateway",
  "ghostr-hls-manifest",
  "ghostr-media-model",
  "ghostr-media-store",
@@ -891,7 +892,9 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "bytes",
+ "fs2",
  "ghostr-engine",
+ "ghostr-net",
  "reqwest",
  "sha2",
  "tokio",

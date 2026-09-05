@@ -68,16 +68,19 @@ async fn seed_sparse_prefix(
         .open_sparse_response(transfer, &action, source.clone(), ByteRange::new(0, 2))
         .await
         .expect("sparse response open");
-    assert_eq!(opened, ResponseOpenResult::Opened);
+    assert_eq!(opened, ResponseOpenResult::Opened, "sparse response opens");
     let wrote = store
         .write_range_for_action_if_current(transfer, &source, &action, 0, &BODY[..2])
         .await
         .expect("sparse prefix");
-    assert!(wrote);
-    assert!(store
-        .finish_sparse_response(transfer, &source, &action)
-        .await
-        .expect("sparse finish"));
+    assert!(wrote, "sparse bytes are retained");
+    assert!(
+        store
+            .finish_sparse_response(transfer, &source, &action)
+            .await
+            .expect("sparse finish"),
+        "sparse response finishes"
+    );
     store.release_action(&action).await;
 }
 

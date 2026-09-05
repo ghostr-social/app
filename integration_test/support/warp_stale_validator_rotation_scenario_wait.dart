@@ -43,6 +43,7 @@ extension _WarpValidatorRotationWait on _WarpValidatorRotationDriver {
 
   Future<void> _swipe(double direction) async {
     final page = find.byType(PageView);
+    await _wait(() => page.evaluate().isNotEmpty);
     final distance = tester.getSize(page).height;
     final gesture = await tester.startGesture(tester.getCenter(page));
     await gesture.moveBy(Offset(0, direction * distance * 0.7));

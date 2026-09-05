@@ -15,45 +15,42 @@ async fn failed_policy_scratch_cleanup_preserves_and_accounts_canonical() {
     let binding = catalog.upsert(PostId::new("clip"), meta());
     let identity = binding
         .transfer("https://cdn.example/video")
-        .expect("valid test fixture");
+        .expect("fixture");
     fixture
         .store
         .bind_representation(binding.clone())
         .await
-        .expect("valid test fixture");
+        .expect("fixture");
+    crate::tests::store_fixture::authorize(&fixture.store, &identity, "generation").await;
     fixture
         .store
         .write_range("clip", 0, b"abcdefghijkl")
         .await
-        .expect("valid test fixture");
+        .expect("fixture");
     fixture
         .store
         .set_total_len("clip", 12)
         .await
-        .expect("valid test fixture");
+        .expect("fixture");
     tokio::fs::write(fixture.root.join("clip.part.evict"), b"abcd0000ijkl")
         .await
-        .expect("valid test fixture");
+        .expect("fixture");
     tokio::fs::write(
         fixture.root.join("clip.evict.intent"),
         br#"{"version":1,"retained_bytes":8}"#,
     )
     .await
-    .expect("valid test fixture");
+    .expect("fixture");
     std::fs::set_permissions(&fixture.root, std::fs::Permissions::from_mode(0o500))
-        .expect("valid test fixture");
+        .expect("fixture");
 
     let reopened = crate::tests::store_fixture::reopened(&fixture);
-    reopened
-        .store
-        .load_existing()
-        .await
-        .expect("valid test fixture");
+    reopened.store.load_existing().await.expect("fixture");
     reopened
         .store
         .bind_representation(binding)
         .await
-        .expect("valid test fixture");
+        .expect("fixture");
 
     assert_eq!(reopened.store.used_bytes().await, 20);
     assert_eq!(
@@ -61,7 +58,7 @@ async fn failed_policy_scratch_cleanup_preserves_and_accounts_canonical() {
             .store
             .read_range("clip", 4..8)
             .await
-            .expect("valid test fixture"),
+            .expect("fixture"),
         Some(b"efgh".to_vec())
     );
     assert!(reopened
@@ -70,12 +67,12 @@ async fn failed_policy_scratch_cleanup_preserves_and_accounts_canonical() {
         .await
         .is_err());
     std::fs::set_permissions(&fixture.root, std::fs::Permissions::from_mode(0o700))
-        .expect("valid test fixture");
+        .expect("fixture");
     let retry = reopened
         .store
         .reserve_action(&identity, 2, 8)
         .await
-        .expect("valid test fixture");
+        .expect("fixture");
     assert_eq!(reopened.store.used_bytes().await, 12);
     assert!(!fixture.root.join("clip.part.evict").exists());
     reopened.store.release_action(&retry).await;

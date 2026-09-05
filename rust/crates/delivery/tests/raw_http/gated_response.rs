@@ -1,6 +1,6 @@
-use super::answer_once;
+use super::body_request::accept_body;
 use std::sync::Arc;
-use tokio::io::{AsyncReadExt as _, AsyncWriteExt as _};
+use tokio::io::AsyncWriteExt as _;
 use tokio::net::TcpListener;
 use tokio::sync::{oneshot, Notify};
 use tokio::task::JoinHandle;
@@ -19,11 +19,7 @@ pub async fn spawn_gated_response(probe: &'static [u8], body: &'static [u8]) -> 
     let release = Arc::clone(&release_headers);
     let (request_sent, body_request) = oneshot::channel();
     let requests = tokio::spawn(async move {
-        answer_once(&listener, probe).await;
-        let (mut socket, _) = listener.accept().await.expect("body request");
-        let mut request = vec![0; 4096];
-        let length = socket.read(&mut request).await.expect("read body request");
-        request.truncate(length);
+        let (mut socket, request) = accept_body(&listener, probe).await;
         request_sent.send(request).ok();
         release.notified().await;
         socket.write_all(body).await.expect("write response");

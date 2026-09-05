@@ -33,7 +33,7 @@ fn boundary(cache: &SegmentedCache, post: &str, trace: &mut WaitTrace) -> Segmen
     if terminal(&latest) {
         return latest;
     }
-    trace.fail(latest)
+    trace.fail(&latest)
 }
 
 struct WaitTrace {
@@ -71,7 +71,7 @@ impl WaitTrace {
         Instant::now() >= self.deadline
     }
 
-    fn fail(&self, snapshot: SegmentedSnapshot) -> ! {
+    fn fail(&self, snapshot: &SegmentedSnapshot) -> ! {
         panic!(
             "terminal HLS readiness: monotonic={:?}; wall={:?}; idle={:?}; \
              snapshots={:?}; snapshot={snapshot:?}",

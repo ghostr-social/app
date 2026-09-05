@@ -3,6 +3,10 @@ set -eu
 
 root=$(CDPATH= cd -- "$(dirname "$0")/../.." && pwd)
 runner="$root/tool/run_video_android_lifecycle.sh"
+if ! grep -Fq 'shell input keyevent KEYCODE_HOME' "$runner"; then
+  echo 'lifecycle runner must send the physical HOME input event' >&2
+  exit 1
+fi
 output=$(mktemp)
 trap 'rm -f "$output"' EXIT HUP INT TERM
 

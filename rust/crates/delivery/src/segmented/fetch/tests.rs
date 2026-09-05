@@ -2,6 +2,7 @@ mod admission_timeout_policy_test;
 mod asset;
 mod cancellation_test;
 mod content_length_limit_test;
+mod cumulative_allowance_policy_test;
 mod header_limit_test;
 mod header_timeout_test;
 mod idle_timeout_test;

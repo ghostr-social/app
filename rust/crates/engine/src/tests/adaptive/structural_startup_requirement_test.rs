@@ -8,7 +8,7 @@ use crate::{ByteRange, PostId};
 use support::{candidate, metadata, overlaps};
 
 #[test]
-fn adjacent_startup_requires_initialization_and_first_media() {
+fn adjacent_startup_requires_initialization_and_continuation() {
     let ftyp = valid_ftyp();
     let moov = classic_moov(&[100, 500], &[100, 100]);
     let mut input = snapshot(2, 20_000_000, 20_000, 2);
@@ -30,7 +30,11 @@ fn adjacent_startup_requires_initialization_and_first_media() {
     input.candidates[1] = candidate(
         &ftyp,
         &moov,
-        vec![ByteRange::new(0, 24), ByteRange::new(100, 200)],
+        vec![
+            ByteRange::new(0, 24),
+            ByteRange::new(100, 200),
+            ByteRange::new(500, 600),
+        ],
     );
     let missing_movie = AdaptivePlayabilityPolicy.plan(&input);
     assert!(missing_movie.allocations.iter().any(|work| {
@@ -39,6 +43,7 @@ fn adjacent_startup_requires_initialization_and_first_media() {
 
     let mut complete = metadata(&moov);
     complete.push(ByteRange::new(100, 200));
+    complete.push(ByteRange::new(500, 600));
     input.candidates[1] = candidate(&ftyp, &moov, complete);
     let plan = AdaptivePlayabilityPolicy.plan(&input);
     let NextReserveEvidence::Structural { post, startup } = plan.next_reserve else {
@@ -54,6 +59,7 @@ fn adjacent_startup_requires_initialization_and_first_media() {
         &[
             ByteRange::new(0, 24),
             ByteRange::new(100, 200),
+            ByteRange::new(500, 600),
             ByteRange::new(10_000, 10_000 + moov.len() as u64)
         ]
     );

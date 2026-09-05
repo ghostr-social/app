@@ -6,12 +6,16 @@ use ghostr_engine::representation::RepresentationBinding;
 use ghostr_engine::VideoMeta;
 use tokio::time::{timeout_at, Instant};
 
+// Capability preparation includes broker admission, discovery, and origin failover.
+// The shorter HTTP unknown-length wait applies only to an already-issued route.
+const CAPABILITY_PREPARATION_WAIT: core::time::Duration = core::time::Duration::from_secs(30);
+
 pub(super) async fn issue(
     state: &ProgressiveState,
     post: &str,
     expected: &VideoMeta,
 ) -> anyhow::Result<ProgressiveCapabilityId> {
-    let deadline = Instant::now() + state.timing.unknown_length_wait;
+    let deadline = Instant::now() + CAPABILITY_PREPARATION_WAIT;
     let store_changes = state.store.change_notifier();
     let cache_changes = state.cache.notifier();
     loop {

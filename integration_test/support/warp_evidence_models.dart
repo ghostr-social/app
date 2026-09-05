@@ -1,3 +1,4 @@
+import 'warp_request_occupancy.dart';
 import 'dart:convert';
 
 part 'warp_evidence_json.dart';

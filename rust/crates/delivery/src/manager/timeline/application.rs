@@ -17,7 +17,7 @@ impl DeliveryWorker {
     ) {
         for result in self.timelines.take_completed() {
             let post = result.post().clone();
-            let current = current_evidence(&self.state, &post, snapshots);
+            let current = current_evidence(&self.state, &self.timelines, &post, snapshots);
             let Some(outcome) = self.timelines.validate(result, current.as_ref()) else {
                 continue;
             };
@@ -37,7 +37,15 @@ impl DeliveryWorker {
     ) {
         match outcome {
             TimelineJobOutcome::Terminal(TimelineTerminal::Ready(timeline)) => {
-                if install_timeline(&mut self.state, evidence.binding(), *timeline) {
+                if install_timeline(
+                    &mut self.state,
+                    evidence.binding(),
+                    *timeline,
+                    evidence
+                        .source
+                        .as_ref()
+                        .map(|(identity, _)| identity.clone()),
+                ) {
                     self.timelines
                         .publish_installed(post.clone(), evidence.clone());
                 }
@@ -111,11 +119,12 @@ impl DeliveryWorker {
 
 fn current_evidence(
     state: &DeliveryState,
+    coordinator: &super::TimelineCoordinator,
     post: &PostId,
     snapshots: &HashMap<PostId, StoredMediaSnapshot>,
 ) -> Option<TimelineEvidence> {
     let binding = state.catalog().binding(post)?;
-    TimelineEvidence::from_snapshot(&binding, snapshots.get(post)?)
+    coordinator.evidence(&binding, snapshots.get(post)?)
 }
 
 fn require_tail_if_started(

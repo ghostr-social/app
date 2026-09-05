@@ -1,7 +1,7 @@
 part of 'warp_cache_pressure_scenario.dart';
 
-const _cachePressureBudgetBytes = 1024 * 1024;
-const _maximumPressureHandoffs = 18;
+const _cachePressureBudgetBytes = 700 * 1024;
+const _maximumPressureHandoffs = 3;
 
 Future<void> _configureCachePressure(WarpLongSessionScenario session) {
   return ffiSetDeliveryConfig(

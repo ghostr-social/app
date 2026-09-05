@@ -80,7 +80,38 @@ impl<'a> CurrentLane<'a> {
     }
 }
 
-pub(super) fn inflight_need_bytes(candidate: &CandidateSnapshot) -> u64 {
+/// Reserve room for a feasible current request before dispatch. Whole-file
+/// fallback cannot acquire an in-flight reservation until this room exists.
+pub(super) fn current_need_bytes(
+    snapshot: &PlayabilitySnapshot,
+    candidate: &CandidateSnapshot,
+    emergency: bool,
+) -> u64 {
+    let whole_start = if candidate.layout == super::MediaLayout::RequiresCompleteFile {
+        start_storage_bytes(snapshot, candidate, emergency)
+    } else {
+        0
+    };
+    inflight_need_bytes(candidate).max(whole_start)
+}
+
+fn start_storage_bytes(
+    snapshot: &PlayabilitySnapshot,
+    candidate: &CandidateSnapshot,
+    emergency: bool,
+) -> u64 {
+    let mut bootstrap = AllocationPlan::default();
+    let mut lane = CurrentLane::new(snapshot, candidate, emergency, &bootstrap);
+    lane.storage_room = snapshot.storage.budget_bytes;
+    lane.append_start(&mut bootstrap, snapshot);
+    bootstrap
+        .allocations
+        .iter()
+        .map(|work| work.request.immediate_network_bytes())
+        .sum()
+}
+
+fn inflight_need_bytes(candidate: &CandidateSnapshot) -> u64 {
     candidate
         .in_flight
         .iter()
@@ -120,4 +151,19 @@ fn inflight_playable_ms(candidate: &CandidateSnapshot) -> u64 {
 fn storage_room(snapshot: &PlayabilitySnapshot, plan: &AllocationPlan) -> u64 {
     let released: u64 = plan.evictions.iter().map(|item| item.range.len()).sum();
     snapshot.storage.available_bytes().saturating_add(released)
+}
+
+impl super::AdaptivePlayabilityPolicy {
+    /// Storage needed to start a feasible current request, before any eviction.
+    pub fn current_start_storage_bytes(self, snapshot: &PlayabilitySnapshot) -> u64 {
+        let current = snapshot
+            .candidates
+            .iter()
+            .find(|candidate| candidate.post == snapshot.playback.current);
+        current.map_or(0, |candidate| {
+            let emergency = snapshot.playback.authority == CurrentAuthority::Canonical
+                && super::resources::endangered(snapshot, candidate);
+            start_storage_bytes(snapshot, candidate, emergency)
+        })
+    }
 }

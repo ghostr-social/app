@@ -1,19 +1,29 @@
 use super::Catalog;
 use crate::evidence::{Confidence, Evidence, EvidenceSource, EvidenceValue};
 use crate::media_timeline::MediaTimeline;
-use crate::representation::RepresentationBinding;
+use crate::representation::{RepresentationBinding, TransferIdentity};
+
+pub struct TimelineObservation {
+    pub timeline: MediaTimeline,
+    pub source: Option<TransferIdentity>,
+    pub observed_at_ms: u64,
+}
 
 impl Catalog {
     pub fn learn_timeline_observation_for(
         &mut self,
         binding: &RepresentationBinding,
-        timeline: MediaTimeline,
-        observed_at_ms: u64,
+        observation: TimelineObservation,
     ) -> bool {
+        let TimelineObservation {
+            timeline,
+            source,
+            observed_at_ms,
+        } = observation;
         let Some(entry) = self.current_entry(binding) else {
             return false;
         };
-        let labels = entry.record_parser_evidence(&timeline, observed_at_ms);
+        let labels = entry.record_parser_evidence(&timeline, source.as_ref(), observed_at_ms);
         entry.timeline = Some(timeline);
         entry.tail_timeline_needed = false;
         entry.evidence_clock_ms = entry.evidence_clock_ms.max(observed_at_ms);
@@ -60,23 +70,28 @@ impl super::CatalogEntry {
     fn record_parser_evidence(
         &mut self,
         timeline: &MediaTimeline,
+        identity: Option<&TransferIdentity>,
         observed_at_ms: u64,
     ) -> Vec<crate::evidence::CalibrationLabel> {
-        let source = EvidenceSource::parser("mp4-v3");
+        let Some(identity) = identity.filter(|identity| {
+            self.binding.transfer(identity.source().as_str()).as_ref() == Some(*identity)
+        }) else {
+            return Vec::new();
+        };
+        let url = identity.source().as_str();
+        let source = EvidenceSource::parser(crate::media_timeline::compiled::PROFILE);
         let truths = parser_values(timeline);
         let mut labels = Vec::new();
-        for url in self.meta.urls.clone() {
-            labels.extend(self.calibration_labels(&url, &truths, &source, observed_at_ms));
-            let scope = self.ledger.scope_for_url(&url);
-            for value in &truths {
-                self.ledger.record(Evidence::new(
-                    value.clone(),
-                    source.clone(),
-                    observed_at_ms,
-                    Confidence::certain(),
-                    scope.clone(),
-                ));
-            }
+        labels.extend(self.calibration_labels(url, &truths, &source, observed_at_ms));
+        let scope = self.ledger.scope_for_url(url);
+        for value in &truths {
+            self.ledger.record(Evidence::new(
+                value.clone(),
+                source.clone(),
+                observed_at_ms,
+                Confidence::certain(),
+                scope.clone(),
+            ));
         }
         labels
     }

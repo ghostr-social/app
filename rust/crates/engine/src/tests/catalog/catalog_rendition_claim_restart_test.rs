@@ -19,22 +19,19 @@ fn live_and_pruned_posts_persist_only_their_advertised_digest_claim() {
         if prune_before_save {
             before.retain(|_| false);
         }
-        let state = CatalogEvidenceState::from_json(&before.evidence_state().to_json())
-            .expect("valid test fixture");
+        let state =
+            CatalogEvidenceState::from_json(&before.evidence_state().to_json()).expect("fixture");
         let mut restarted = Catalog::new();
         restarted.replace_evidence_state(state, 1);
         restarted.upsert(post.clone(), high.clone());
         let failed = restarted.upsert(PostId::new("failed-low"), low.clone());
         let identity = failed
             .transfer("https://low.example/video.mp4")
-            .expect("valid test fixture");
-        let invalidated = restarted.quarantine_mirror_group(&identity, &low_digest, 2);
+            .expect("fixture");
+        let invalidated = restarted.quarantine_source(&identity, &low_digest, 2);
 
         assert!(!invalidated.contains(&post), "pruned={prune_before_save}");
-        assert!(!restarted
-            .lookup(&post)
-            .expect("valid test fixture")
-            .is_quarantined());
+        assert!(!restarted.lookup(&post).expect("fixture").is_quarantined());
     }
 }
 
@@ -51,7 +48,7 @@ fn selected_catalog(post: &PostId, high: &VideoMeta, low: &VideoMeta) -> Catalog
     let (network, observation, target) = stalled_selection();
     catalog
         .select_rendition(post, network, observation, target)
-        .expect("valid test fixture");
+        .expect("fixture");
     catalog
 }
 
@@ -72,14 +69,14 @@ fn stalled_selection() -> (
         1_000,
         PlaybackPhase::NetworkStalled,
     )
-    .expect("valid test fixture");
+    .expect("fixture");
     let target =
         AdaptiveBufferPolicy::default().target(network, MediaConsumption::new(6_000_000, 1_000));
     (network, observation, target)
 }
 
 fn variant(meta: VideoMeta, bitrate: u64) -> VideoRendition {
-    VideoRendition::try_new(meta, Some(bitrate)).expect("valid test fixture")
+    VideoRendition::try_new(meta, Some(bitrate)).expect("fixture")
 }
 
 fn meta(name: &str, digest: &str) -> VideoMeta {

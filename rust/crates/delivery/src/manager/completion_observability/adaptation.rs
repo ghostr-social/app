@@ -19,7 +19,7 @@ pub(super) fn event(
     );
     Some(metric(
         observation,
-        estimate,
+        &estimate,
         exploration_admitted,
         result_bytes(done),
     ))
@@ -27,7 +27,7 @@ pub(super) fn event(
 
 fn metric(
     observation: &OriginObservation,
-    estimate: OriginEstimate,
+    estimate: &OriginEstimate,
     exploring: bool,
     bytes: u64,
 ) -> AdaptationMetricEvent {
@@ -39,8 +39,8 @@ fn metric(
         adapting: estimate.adaptation == AdaptationState::Short,
         predicted_success_bps: probability_bps(estimate.success.mean),
         succeeded: success_observation(observation.outcome),
-        latency_quantiles_on_time: latency_quantiles(observation, &estimate),
-        regret_micros: regret_micros(observation, &estimate),
+        latency_quantiles_on_time: latency_quantiles(observation, estimate),
+        regret_micros: regret_micros(observation, estimate),
         exploration_bytes,
         failed_exploration_bytes,
     }

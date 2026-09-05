@@ -99,6 +99,7 @@ impl<'a, 'spec, W: ChunkWrite + ?Sized> ReceiveInput<'a, 'spec, W> {
             self.mode,
             self.evidence.clone(),
         )
+        .with_retention(self.generation.retention())
     }
 
     fn completion(&self) -> Completion<'a, 'spec, W> {

@@ -68,16 +68,26 @@ final class FeedWatchDependencies {
   final FeedReplayPolicy replayPolicy;
 }
 
+enum FeedDeliveryOrder { semantic, readyRescue }
+
 final class FeedDeliveryDependencies {
   const FeedDeliveryDependencies({
     this.updates,
     this.reposts,
     this.deliveryUpdates,
     this.preparationUpdates,
-  });
+  }) : order = FeedDeliveryOrder.semantic;
+
+  const FeedDeliveryDependencies.withReadyRescue({
+    this.updates,
+    this.reposts,
+    this.deliveryUpdates,
+    this.preparationUpdates,
+  }) : order = FeedDeliveryOrder.readyRescue;
 
   final VideoFeedUpdates? updates;
   final VideoRepostRepository? reposts;
   final VideoDeliveryUpdates? deliveryUpdates;
   final PlaybackPreparationUpdates? preparationUpdates;
+  final FeedDeliveryOrder order;
 }

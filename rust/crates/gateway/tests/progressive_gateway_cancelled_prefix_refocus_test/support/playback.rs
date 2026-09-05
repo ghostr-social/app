@@ -22,9 +22,16 @@ impl CancelledPrefixScenario {
         let body = tokio::spawn(to_bytes(response.into_body(), 65_536));
         wait_for_blocked(&self.harness, None, "first active p6 gateway demand").await;
         let replacement = next_prefix(&mut self.origin, &self.harness).await;
-        assert!(replacement.send_bytes(65_536).await);
+        assert!(
+            replacement.send_bytes(65_536).await,
+            "replacement receives its prefix"
+        );
         let body = body.await.expect("body task").expect("gateway body");
-        assert_eq!(body.as_ref(), &self.bytes[..65_536]);
+        assert_eq!(
+            body.as_ref(),
+            &self.bytes[..65_536],
+            "gateway exposes the exact prefix"
+        );
     }
 }
 

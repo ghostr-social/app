@@ -3,8 +3,8 @@ use crate::{DataUsageLevel, EngineParams};
 
 const LEVELS: [(DataUsageLevel, usize); 3] = [
     (DataUsageLevel::Conservative, 2),
-    (DataUsageLevel::Balanced, 3),
-    (DataUsageLevel::Aggressive, 4),
+    (DataUsageLevel::Balanced, 2),
+    (DataUsageLevel::Aggressive, 2),
 ];
 
 #[test]

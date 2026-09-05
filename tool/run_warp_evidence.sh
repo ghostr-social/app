@@ -46,9 +46,11 @@ else
   printf 'no device\n' >"$dir/device.txt"
 fi
 
+python3 "$root/tool/warp_source_fingerprint.py" "$root" >"$dir/source-before.sha256"
 status_file="$dir/exit.txt"
 ( set +e; "$@" 2>&1; printf '%s\n' "$?" >"$status_file" ) | tee "$dir/stdout.log"
 status=$(cat "$status_file")
+python3 "$root/tool/warp_source_fingerprint.py" "$root" >"$dir/source-after.sha256"
 
 if test "$serial" != none; then
   adb -s "$serial" logcat -d 2>/dev/null |
@@ -58,6 +60,11 @@ fi
 grep -E 'WARP_[A-Z_]+' "$dir/stdout.log" >"$dir/markers.log" || true
 {
   printf 'exit=%s\n' "$status"
+  if cmp -s "$dir/source-before.sha256" "$dir/source-after.sha256"; then
+    printf 'source_changed=false\n'
+  else
+    printf 'source_changed=true\n'
+  fi
   grep -E 'All tests passed|Some tests failed|Test failed|Error:' "$dir/stdout.log" | tail -20
 } >"$dir/summary.txt" || true
 

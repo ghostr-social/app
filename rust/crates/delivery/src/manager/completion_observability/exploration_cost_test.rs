@@ -1,4 +1,4 @@
-use super::super::exploration_cost;
+use super::exploration_cost;
 
 #[test]
 fn cold_delivery_bytes_are_not_exploration_cost() {

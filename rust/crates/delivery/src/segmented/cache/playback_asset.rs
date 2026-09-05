@@ -5,7 +5,6 @@ use super::{
 
 #[derive(Clone)]
 pub struct PreparedHlsPlaybackAsset {
-    authority: HlsPreparedAssetAuthority,
     root_source: String,
     playback_manifest_source: String,
     objects: Vec<PreparedHlsPlaybackObject>,
@@ -18,10 +17,6 @@ struct PreparedHlsPlaybackObject {
 }
 
 impl PreparedHlsPlaybackAsset {
-    pub fn authority(&self) -> &HlsPreparedAssetAuthority {
-        &self.authority
-    }
-
     pub(super) fn root_source(&self) -> &str {
         &self.root_source
     }
@@ -62,7 +57,7 @@ impl SegmentedCache {
         let state = self.lock();
         let record = state.focus.get(authority.post())?;
         prepared_record_matches(record, authority, sources)
-            .then(|| captured_asset(&state, record, authority))?
+            .then(|| captured_asset(&state, record))?
     }
 }
 
@@ -76,13 +71,8 @@ fn prepared_record_matches(
         && record.sources == sources
 }
 
-fn captured_asset(
-    state: &CacheState,
-    record: &FocusRecord,
-    authority: &HlsPreparedAssetAuthority,
-) -> Option<PreparedHlsPlaybackAsset> {
+fn captured_asset(state: &CacheState, record: &FocusRecord) -> Option<PreparedHlsPlaybackAsset> {
     let asset = PreparedHlsPlaybackAsset {
-        authority: authority.clone(),
         root_source: record.root_source.clone()?,
         playback_manifest_source: record.playback_manifest_source.clone()?,
         objects: captured_objects(state, record)?,

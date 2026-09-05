@@ -36,7 +36,17 @@ pub(super) async fn assert_failure_evidence(harness: &DeliveryHarness, origin: &
     })
     .await;
     tokio::time::sleep(Duration::from_millis(30)).await;
-    assert_eq!(stats.failure_ratio(&host), 0.0);
-    assert!(!harness.root.join("aa11.video").exists());
-    assert!(!harness.root.join("aa11.verified").exists());
+    assert_eq!(
+        stats.failure_ratio(&host),
+        0.0,
+        "local storage failure is not an origin failure"
+    );
+    assert!(
+        !harness.root.join("aa11.video").exists(),
+        "storage failure leaves no completed object"
+    );
+    assert!(
+        !harness.root.join("aa11.verified").exists(),
+        "storage failure leaves no verification marker"
+    );
 }

@@ -33,6 +33,7 @@ nix = { workspace = true }
 # `range_fixture` serves real ranged responses over a loopback listener, so the
 # chunk downloader and probes are exercised against an actual HTTP origin.
 [dev-dependencies]
+ghostr-net = { path = "../net", features = ["test"] }
 axum = { workspace = true }
 ghostr-engine = { path = "../engine", features = ["test"] }
 ghostr-partial-store = { path = "../partial-store", features = ["test"] }

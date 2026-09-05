@@ -119,6 +119,8 @@ impl DeliveryWorker {
             .await
         {
             Ok(ResponseOpenResult::Opened) => {
+                self.timelines
+                    .observe_index_source(attempt.identity(), response);
                 self.downloads
                     .observe_response(attempt, response.observation());
                 ResponseAdmission::Proceed

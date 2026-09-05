@@ -46,7 +46,7 @@ report_foreground() {
   adb -s "$serial" shell pidof app.ghostr 2>&1 || true
   adb -s "$serial" shell dumpsys activity activities 2>&1 |
     grep -E 'mResumedActivity|topResumedActivity|app\.ghostr/social\.ghostr\.MainActivity' || true
-  adb -s "$serial" shell dumpsys window windows 2>&1 |
+  adb -s "$serial" shell dumpsys window 2>&1 |
     grep -E 'mCurrentFocus|mFocusedApp|app\.ghostr/social\.ghostr\.MainActivity' || true
 }
 
@@ -83,8 +83,7 @@ cd "$root"
 ) &
 test_pid=$!
 wait_for_marker WARP_ANDROID_LIFECYCLE_READY 6000
-adb -s "$serial" shell am start -a android.intent.action.MAIN \
-  -c android.intent.category.HOME >/dev/null
+adb -s "$serial" shell input keyevent KEYCODE_HOME
 wait_for_marker WARP_ANDROID_LIFECYCLE_BACKGROUND 300
 adb -s "$serial" shell monkey -p app.ghostr \
   -c android.intent.category.LAUNCHER 1

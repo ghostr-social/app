@@ -61,27 +61,17 @@ impl Catalog {
         post: &PostId,
         selected: VideoMeta,
     ) -> Option<RepresentationBinding> {
-        if self.quarantined(&selected) {
+        if self.quarantined(post, &selected) {
             return None;
         }
         let entry = self.entries.get(post)?;
         let source = entry.binding.source_representation().clone();
-        let previous_digest = entry.meta.sha256.clone();
-        let next_digest = selected.sha256.clone();
         let generation = self.allocate_generation();
         self.entries
             .get_mut(post)?
             .switch(selected, generation, Some(source));
-        self.update_digest_claim(post, previous_digest.as_deref(), next_digest.as_deref());
         self.apply_known_quarantine(post);
         self.binding(post)
-    }
-
-    fn quarantined(&self, selected: &VideoMeta) -> bool {
-        selected.sha256.as_deref().is_some_and(|digest| {
-            self.quarantined_digests
-                .contains(&digest.to_ascii_lowercase())
-        })
     }
 }
 

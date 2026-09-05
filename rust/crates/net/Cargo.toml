@@ -5,11 +5,18 @@ edition = "2021"
 publish = false
 description = "Guarded outbound media HTTP: public-address checks, DNS resolution, range and content-type handling."
 
+[features]
+test = []
+
 [dependencies]
 ghostr-engine = { path = "../engine" }
 
 anyhow = { workspace = true }
 bytes = { workspace = true }
+fs2 = { workspace = true }
 reqwest = { workspace = true }
 sha2 = { workspace = true }
 tokio = { workspace = true }
+
+[dev-dependencies]
+ghostr-net = { path = ".", features = ["test"] }

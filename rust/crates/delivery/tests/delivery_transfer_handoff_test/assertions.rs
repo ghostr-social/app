@@ -6,30 +6,18 @@ use ghostr_engine::adaptive::{
 
 pub fn assert_decisions(handle: &DeliveryHandle, cutoff: u64) {
     let records = handle.decision_history().records;
-    let handoffs: Vec<_> = records
-        .iter()
-        .filter(|record| is_handoff(record, cutoff))
-        .collect();
-    assert!(!handoffs.is_empty(), "a selected handoff is observed");
-    assert!(handoffs
-        .iter()
-        .all(|record| record.eventual_outcome == DecisionOutcome::Superseded));
-    assert!(!records.iter().any(|record| abandoned(record, cutoff)));
+    assert!(
+        !records.iter().any(|record| abandoned(record, cutoff)),
+        "useful transfer is not abandoned"
+    );
     assert_eq!(
         records
             .iter()
             .filter(|record| record.sequence > cutoff && bound_transfer(record))
             .count(),
-        1
+        1,
+        "handoff has one terminal completion"
     );
-}
-
-pub fn is_handoff(record: &DecisionRecord, cutoff: u64) -> bool {
-    record.sequence > cutoff
-        && playback_transfer(record)
-        && record.chosen_action_id.is_none()
-        && record.executed_request.is_none()
-        && record.eventual_outcome != DecisionOutcome::Pending
 }
 
 fn bound_transfer(record: &DecisionRecord) -> bool {

@@ -35,7 +35,7 @@ impl<'a> Atom<'a> {
     }
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, serde::Serialize, serde::Deserialize)]
 pub(crate) struct MediaData {
     pub(super) header: ByteRange,
     pub(super) payload: ByteRange,

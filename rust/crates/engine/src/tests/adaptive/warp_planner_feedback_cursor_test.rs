@@ -9,7 +9,8 @@ use crate::tests::adaptive_support::snapshot;
 fn authoritative_prices_ignore_equal_and_stale_cursors_across_wrap() {
     let state = snapshot(2, 8_000_000, 8_000, 20);
     let base = AdaptivePlayabilityPolicy.plan(&state);
-    let mut planner = WarpPlanner::default();
+    let mut planner =
+        WarpPlanner::new(crate::adaptive::WarpPlannerConfig::default().with_lookahead());
     let first = plan(&mut planner, &state, &base, feedback(0, 2, 200));
     let stale = plan(&mut planner, &state, &base, feedback(0, 1, 900));
     let equal = plan(&mut planner, &state, &base, feedback(0, 2, 800));
@@ -24,7 +25,8 @@ fn authoritative_prices_ignore_equal_and_stale_cursors_across_wrap() {
 fn legacy_feedback_ignores_a_lower_revision() {
     let state = snapshot(2, 8_000_000, 8_000, 20);
     let base = AdaptivePlayabilityPolicy.plan(&state);
-    let mut planner = WarpPlanner::default();
+    let mut planner =
+        WarpPlanner::new(crate::adaptive::WarpPlannerConfig::default().with_lookahead());
     let first = plan(&mut planner, &state, &base, legacy(9));
     let stale = plan(&mut planner, &state, &base, legacy(8));
 

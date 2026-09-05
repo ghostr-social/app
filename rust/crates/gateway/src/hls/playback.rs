@@ -19,6 +19,8 @@ pub struct HlsPlaybackRequest {
 }
 
 impl HlsPlaybackRequest {
+    /// # Errors
+    /// Rejects invalid or unsupported source URLs.
     pub fn new(authority: HlsPreparedAssetAuthority, sources: Vec<String>) -> Result<Self> {
         let parsed = validated_sources(sources.clone())?;
         Ok(Self {
@@ -60,6 +62,10 @@ impl HlsPlaybackGateway {
             return false;
         };
         self.sessions.release(&id).await
+    }
+
+    pub(crate) async fn clear(&self) {
+        self.sessions.clear().await;
     }
 
     fn session(

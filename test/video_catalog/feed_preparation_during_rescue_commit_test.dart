@@ -34,7 +34,7 @@ void main() {
               failureReporter: RecordingFailureReporter(),
             ),
           ),
-          delivery: FeedDeliveryDependencies(
+          delivery: FeedDeliveryDependencies.withReadyRescue(
             deliveryUpdates: delivery,
             preparationUpdates: preparation,
           ),

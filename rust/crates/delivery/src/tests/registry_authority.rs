@@ -1,0 +1,15 @@
+mod client_capability_failure_test;
+mod client_capability_persistence_test;
+mod client_capability_planner_mapping_test;
+mod client_capability_profile_test;
+mod client_capability_promotion_test;
+mod client_capability_stale_generation_test;
+mod client_capability_state_test;
+mod client_capability_version_test;
+mod client_capability_volatile_persistence_test;
+mod focus_generation_ingress_test;
+mod focus_generation_lineage_test;
+mod focus_generation_state_test;
+mod focus_generation_value_test;
+mod inflight_partial_response_release_test;
+mod inflight_promoted_response_state_test;

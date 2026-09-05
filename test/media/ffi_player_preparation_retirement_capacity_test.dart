@@ -22,14 +22,14 @@ void main() {
       clientEpoch: BigInt.one,
       monotonicMicros: () => 1,
     );
-    final retired = List.generate(8, (index) {
+    final retired = List.generate(2, (index) {
       return feedback.prepare(testPlaybackAuthority(postId: 'retired-$index'))
         ..begin();
     });
     for (final attempt in retired) {
       attempt.release();
     }
-    final replacements = List.generate(8, (index) {
+    final replacements = List.generate(2, (index) {
       return feedback.prepare(
         testPlaybackAuthority(postId: 'replacement-$index'),
       )..begin();
@@ -40,9 +40,9 @@ void main() {
     overflow.release();
     await drainTestMicrotasks();
 
-    expect(sent, hasLength(16));
+    expect(sent, hasLength(4));
     expect(sent.where((report) => report.postId == 'overflow'), isEmpty);
-    for (final completion in blocked.take(8)) {
+    for (final completion in blocked.take(2)) {
       completion.complete(FfiPlayerPreparationDisposition.applied);
     }
     await drainTestMicrotasks();
@@ -50,9 +50,9 @@ void main() {
       sent.where(
         (report) => report.state == FfiPlayerPreparationState.released,
       ),
-      hasLength(8),
+      hasLength(2),
     );
-    blocked[16].complete(FfiPlayerPreparationDisposition.applied);
+    blocked[4].complete(FfiPlayerPreparationDisposition.applied);
     await drainTestMicrotasks();
     feedback.prepare(testPlaybackAuthority(postId: 'reopened')).begin();
     await drainTestMicrotasks();

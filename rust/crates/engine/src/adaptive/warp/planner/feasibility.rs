@@ -14,6 +14,7 @@ mod reserve;
 #[path = "feasibility/tests/mod.rs"]
 mod tests;
 
+#[derive(Clone)]
 pub(super) struct FeasibleActions {
     pub nodes: Vec<ActionNode>,
     pub budget: HardBudget,

@@ -4,7 +4,7 @@ import 'package:ghostr/features/video_catalog/domain/feed_focus_port.dart';
 final class FeedFocusArbiter {
   FeedFocusArbiter(this._sink);
 
-  final FeedFocusPort _sink;
+  final FeedFocusSink _sink;
   _ArbiterLease? _active;
 
   FeedFocusLease openLease() => _ArbiterLease(this);
@@ -21,6 +21,7 @@ final class FeedFocusArbiter {
   void _deactivate(_ArbiterLease lease) {
     if (!identical(_active, lease)) return;
     _active = null;
+    _sink.clearFocus();
   }
 
   void _write(_ArbiterLease lease, FeedFocus focus) {

@@ -34,7 +34,7 @@ async fn malformed_new_generation_revokes_cached_bytes_and_validator() {
         .store
         .write_range(fixture.post.as_str(), 0, &[7; 4])
         .await
-        .expect("valid test fixture");
+        .expect("fixture");
 
     fixture.worker.queue_response_for_test(
         attempt,
@@ -54,11 +54,11 @@ async fn malformed_new_generation_revokes_cached_bytes_and_validator() {
         .store
         .present_ranges(fixture.post.as_str())
         .await
-        .expect("valid test fixture")
+        .expect("fixture")
         .is_empty());
     tokio::fs::remove_dir_all(fixture.root)
         .await
-        .expect("valid test fixture");
+        .expect("fixture");
 }
 
 async fn wait_for_validator_revocation(fixture: &mut TimelineManagerFixture) {

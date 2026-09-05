@@ -80,6 +80,9 @@ impl PartialRangeStore {
     /// Returns an error when persisted bytes cannot be read or fail integrity validation.
     pub async fn read_range(&self, key: &str, span: Range<u64>) -> Result<Option<Vec<u8>>> {
         let _update = self.observe_key(key).await?;
+        if let Some(read) = self.read_transient(key, &span).await {
+            return Ok(read);
+        }
         if let Some(response) = self.session_response(key).await {
             return session::read(self, key, &response, span).await;
         }

@@ -1,8 +1,9 @@
 part of 'warp_feed_relay.dart';
 
 extension _WarpFeedRelayQuery on WarpFeedRelay {
-  Future<void> _handle(WebSocket socket, Object? raw) async {
-    if (raw is! String) return;
+  void _handle(WebSocket socket, Object? raw) {
+    if (_closing) return;
+    if (socket.readyState != WebSocket.open || raw is! String) return;
     final message = jsonDecode(raw);
     if (message is! List || message.length < 2 || message.first != 'REQ') {
       return;
@@ -12,7 +13,7 @@ extension _WarpFeedRelayQuery on WarpFeedRelay {
     if (subscription is! String) return;
     final filters = _filters(message);
     requestedFilters.addAll(filters);
-    await _sendMatches(socket, subscription, filters);
+    _sendMatches(socket, subscription, filters);
     socket.add(jsonEncode(['EOSE', subscription]));
   }
 
@@ -24,19 +25,18 @@ extension _WarpFeedRelayQuery on WarpFeedRelay {
         .toList();
   }
 
-  Future<void> _sendMatches(
+  void _sendMatches(
     WebSocket socket,
     String subscription,
     List<Map<String, Object?>> filters,
-  ) async {
+  ) {
     if (!_requestsKind(filters, 22)) return;
     videoSubscriptions += 1;
     final matches = _events.where((event) => _matchesAny(event, filters));
-    final frames = matches.map(
-      (event) => jsonEncode(['EVENT', subscription, _payload(event)]),
-    );
-    await socket.addStream(Stream<String>.fromIterable(frames));
-    eventsSent += matches.length;
+    for (final event in matches) {
+      socket.add(jsonEncode(['EVENT', subscription, _payload(event)]));
+      eventsSent += 1;
+    }
   }
 
   bool _requestsKind(Iterable<Map<String, Object?>> filters, int kind) {

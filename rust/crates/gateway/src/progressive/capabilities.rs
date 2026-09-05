@@ -92,6 +92,10 @@ impl ProgressiveCapabilities {
         Ok(state.insert(authority, now))
     }
 
+    pub(crate) async fn clear(&self) {
+        *self.state.lock().await = CapabilityState::default();
+    }
+
     pub async fn recognizes(&self, raw: &str, post: &str) -> bool {
         let Some(id) = ProgressiveCapabilityId::parse(raw) else {
             return false;

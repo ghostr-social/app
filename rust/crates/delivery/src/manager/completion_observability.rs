@@ -12,8 +12,6 @@ mod adaptation;
 pub(crate) mod axiom_test_support;
 mod outcome;
 mod policy_limit;
-#[cfg(test)]
-use adaptation::exploration_cost;
 use outcome::{decision_outcome, result_bytes};
 
 impl DeliveryWorker {

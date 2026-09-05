@@ -36,7 +36,7 @@ async fn rejected_error_page_cannot_replace_media_validator() {
     );
     tokio::fs::remove_dir_all(fixture.root)
         .await
-        .expect("valid test fixture");
+        .expect("fixture");
 }
 
 fn accepted() -> OpenedResponse {

@@ -10,7 +10,6 @@ mod stats;
 
 pub(super) const PRIMARY: &str = "https://slow.example/video.mp4";
 pub(super) const ALTERNATE: &str = "https://fast.example/video.mp4";
-pub(super) const PRIMARY_ACTION_ID: u64 = 1;
 pub(super) const OBSERVED_AT_MS: u64 = 5_000;
 
 #[derive(Clone, Copy)]

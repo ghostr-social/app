@@ -64,7 +64,7 @@ impl PartialRangeStore {
         }
     }
 
-    pub(super) async fn http_generation_matches_source(
+    pub async fn http_generation_matches_source(
         &self,
         identity: &TransferIdentity,
         generation: &SourceGeneration,

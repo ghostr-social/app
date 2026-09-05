@@ -1,5 +1,6 @@
 pub(super) fn is_admission_timeout(error: &anyhow::Error) -> bool {
     error.is::<ghostr_net::media_request_executor::MediaRequestAdmissionTimeout>()
+        || error.is::<ghostr_net::internet_allowance::InternetAdmissionDenied>()
 }
 
 pub(super) fn unix_time_ms() -> u64 {

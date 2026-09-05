@@ -8,8 +8,7 @@ impl Default for Catalog {
             entries: HashMap::new(),
             reliability: crate::evidence::FieldReliabilityModel::default(),
             reliability_revision: 0,
-            digest_claims: HashMap::new(),
-            quarantined_digests: BTreeSet::new(),
+            quarantined_sources: BTreeSet::new(),
             next_generation: RepresentationGeneration::first(),
         }
     }

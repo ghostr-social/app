@@ -34,7 +34,7 @@ const VIDEO_MIME: &str = "video/mp4";
 #[derive(Clone, Copy, Debug)]
 pub struct ProgressiveTiming {
     /// Wait for binding or total-length readiness before giving up.
-    pub(crate) unknown_length_wait: Duration,
+    unknown_length_wait: Duration,
     /// Abort a stalled stream once no byte lands for this long.
     pub(super) idle_timeout: Duration,
 }

@@ -57,7 +57,8 @@ fn retained(indices: &[usize]) -> Vec<usize> {
         let generation = u64::try_from(offset + 1).expect("small fixture");
         assert_eq!(
             handle.update_focus(focus(items.clone(), current, generation)),
-            FocusAdmission::Accepted
+            FocusAdmission::Accepted,
+            "navigation generation is accepted"
         );
     }
     core::iter::from_fn(|| receiver.try_control())

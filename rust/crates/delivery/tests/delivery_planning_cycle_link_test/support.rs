@@ -10,8 +10,14 @@ pub fn assert_serialized_correlation(handle: &DeliveryHandle, plan: &PlanEvidenc
         .iter()
         .find(|value| value["revision"].as_u64() == Some(plan.revision))
         .expect("serialized linked plan");
-    assert_eq!(serialized["decision_sequence"], sequence);
-    assert_eq!(serialized["observed_at_ms"], plan.observed_at_ms);
+    assert_eq!(
+        serialized["decision_sequence"], sequence,
+        "plan links its decision sequence"
+    );
+    assert_eq!(
+        serialized["observed_at_ms"], plan.observed_at_ms,
+        "plan links its observation time"
+    );
 
     let history = json(handle.decision_history_json());
     let decisions = history["decisions"]["records"]
@@ -22,8 +28,8 @@ pub fn assert_serialized_correlation(handle: &DeliveryHandle, plan: &PlanEvidenc
         .find(|value| value["sequence"].as_u64() == Some(sequence))
         .expect("serialized linked decision");
     assert_eq!(
-        decision["replay_state"]["observed_at_ms"],
-        plan.observed_at_ms
+        decision["replay_state"]["observed_at_ms"], plan.observed_at_ms,
+        "replay preserves the observation time"
     );
 }
 

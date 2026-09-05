@@ -1,5 +1,4 @@
-//! Promotion must fetch each planned byte exactly once even when disjoint
-//! ranges complete in either order.
+//! Unsupported media completes through one bounded whole-object fallback.
 
 mod delivery_fixture;
 
@@ -15,7 +14,7 @@ const PLAYBACK_SLICE: u64 = 256 * 1_024;
 const TOTAL: u64 = 370_912;
 
 #[tokio::test]
-async fn focus_promotion_fetches_exact_disjoint_ranges() {
+async fn focus_promotion_completes_unsupported_media_through_one_whole_fallback() {
     let log = hit_log();
     let current = serve_recording(
         "current",
@@ -41,7 +40,9 @@ async fn focus_promotion_fetches_exact_disjoint_ranges() {
 
     let mut gets = next_gets(&log);
     gets.sort();
-    assert_eq!(gets, ["next:GET:0-262143", "next:GET:262144-370911"]);
+    assert_eq!(gets, ["next:GET:0-65535", "next:GET:full"]);
+    delivery_fixture::wait::wait_for_ranges(&harness.store, "next", &[(0, TOTAL)]).await;
+    assert_eq!(next_gets(&log).len(), 2, "whole fallback does not loop");
     harness.handle.clear().await.expect("valid test fixture");
     std::fs::remove_dir_all(&harness.root).ok();
 }

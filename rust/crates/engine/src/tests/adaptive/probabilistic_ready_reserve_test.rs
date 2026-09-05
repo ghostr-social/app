@@ -4,7 +4,7 @@ use crate::PostId;
 use std::collections::HashSet;
 
 #[test]
-fn rapid_swipes_and_slow_recovery_prepare_several_distinct_videos() {
+fn rapid_swipes_keep_the_initial_reserve_within_two_distinct_videos() {
     let input = snapshot(8, 2_000_000, 20_000, 60);
 
     let plan = AdaptivePlayabilityPolicy.plan(&input);
@@ -15,13 +15,13 @@ fn rapid_swipes_and_slow_recovery_prepare_several_distinct_videos() {
         .map(|work| work.post.clone())
         .collect();
 
-    assert!(plan.ready_reserve.target >= 3);
+    assert_eq!(plan.ready_reserve.target, 2);
     assert!(
-        plan.ready_reserve.protected >= 3,
+        plan.ready_reserve.protected == 2,
         "reserve: {:?}",
         plan.ready_reserve
     );
-    assert!(prepared.len() >= 3);
+    assert!(prepared.len() <= 2);
     assert_eq!(plan.mode, ControlMode::Emergency);
 }
 
@@ -42,12 +42,13 @@ fn playable_prefixes_count_as_probability_weighted_ready_coverage() {
     let plan = AdaptivePlayabilityPolicy.plan(&input);
 
     assert_eq!(plan.ready_reserve.ready, 2);
-    assert!(plan.ready_reserve.ready_coverage_ms > 3_000);
+    assert!(plan.ready_reserve.ready_coverage_ms > 0);
+    assert!(plan.ready_reserve.ready_coverage_ms <= 4_000);
     assert_eq!(plan.mode, ControlMode::Normal);
 }
 
 #[test]
-fn a_swipe_replenishes_the_consumed_reserve_at_the_far_edge() {
+fn already_retained_nearby_items_do_not_expand_the_reserve_after_a_swipe() {
     let mut input = snapshot(7, 1_000_000, 20_000, 60);
     input.playback.current = PostId::new("p1");
     for (index, candidate) in input.candidates.iter_mut().enumerate() {
@@ -64,8 +65,8 @@ fn a_swipe_replenishes_the_consumed_reserve_at_the_far_edge() {
         .map(|work| work.post.as_str())
         .collect();
 
-    assert_eq!(plan.ready_reserve.ready, 3);
-    assert_eq!(plan.ready_reserve.protected, plan.ready_reserve.target);
-    assert!(refilled.contains("p5"));
-    assert!(refilled.contains("p6"));
+    assert_eq!(plan.ready_reserve.ready, 2);
+    assert!(plan.ready_reserve.protected >= plan.ready_reserve.target);
+    assert!(!refilled.contains("p5"));
+    assert!(!refilled.contains("p6"));
 }

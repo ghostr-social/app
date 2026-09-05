@@ -19,7 +19,7 @@ impl Builder<'_> {
             maximum_bytes: maximum,
         };
         let source = self.admitted_request_source(candidate, &kind)?;
-        if promotable_range_owns_whole(self, candidate, maximum, source) {
+        if single_slice_range_dominates_whole(self, candidate, source) {
             return None;
         }
         if self.contains(candidate, &kind) {
@@ -70,16 +70,15 @@ fn whole_is_owned(candidate: &CandidateSnapshot) -> bool {
         .any(|active| active.identity_current)
 }
 
-fn promotable_range_owns_whole(
+/// Prune only when the emitted request and retained bytes complete the object.
+fn single_slice_range_dominates_whole(
     builder: &Builder<'_>,
     candidate: &CandidateSnapshot,
-    total: u64,
     source: &str,
 ) -> bool {
-    if builder.generation_policies.range_alias
-        == super::super::RangeAliasGenerationPolicy::LegacyIndependentActions
-        || candidate.layout == MediaLayout::RequiresCompleteFile
+    if candidate.layout == MediaLayout::RequiresCompleteFile
         || candidate.present.is_empty()
+        || candidate.total_bytes.is_none()
         || candidate.direct_playback_blocked
         || builder.direct_playback_blocked(candidate)
     {
@@ -88,26 +87,24 @@ fn promotable_range_owns_whole(
     builder
         .actions
         .iter()
-        .any(|action| range_promotion_covers(action, candidate, total, source))
+        .any(|action| completing_range(action, candidate, source))
 }
 
-fn range_promotion_covers(
-    action: &GeneratedAction,
-    candidate: &CandidateSnapshot,
-    total: u64,
-    source: &str,
-) -> bool {
+fn completing_range(action: &GeneratedAction, candidate: &CandidateSnapshot, source: &str) -> bool {
     if action.node.post != candidate.post {
         return false;
     }
     let PlannerCommand::Transfer(allocation) = &action.command else {
         return false;
     };
-    matches!(
-        allocation.request,
-        RetrievalRequest::FetchRange {
-            promotion: Some(grant),
-            ..
-        } if allocation.source == source && grant.maximum_bytes >= total
-    )
+    let RetrievalRequest::FetchRange { bytes, .. } = allocation.request else {
+        return false;
+    };
+    let Some(total) = candidate.total_bytes else {
+        return false;
+    };
+    let mut coverage = candidate.present.clone();
+    coverage.push(bytes);
+    allocation.source == source
+        && crate::adaptive::ranges::uncovered_bytes(crate::ByteRange::new(0, total), &coverage) == 0
 }

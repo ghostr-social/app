@@ -59,7 +59,11 @@ impl LoopReopenFixture {
             )
             .await
             .expect("full response open");
-        assert_eq!(opened, ResponseOpenResult::Opened);
+        assert_eq!(
+            opened,
+            ResponseOpenResult::Opened,
+            "replacement response opens"
+        );
         action
     }
 
@@ -83,6 +87,6 @@ impl LoopReopenFixture {
             )
             .await
             .expect("full response finish");
-        assert!(finished);
+        assert!(finished, "replacement finishes");
     }
 }

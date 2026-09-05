@@ -7,7 +7,7 @@ void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
   testWidgets(
-    'physical feed reuses all three recent decoded players when capacity is free',
+    'physical feed replays retained bytes within the two-player limit',
     runWarpAdaptiveWarmBackScenario,
   );
 }

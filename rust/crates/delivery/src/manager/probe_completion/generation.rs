@@ -32,6 +32,9 @@ impl DeliveryWorker {
         identity: &TransferIdentity,
         stamp: &HttpGenerationStamp,
     ) -> anyhow::Result<()> {
+        if self.has_other_continuation(identity).await {
+            return Ok(());
+        }
         let authority = stamp.authority().clone();
         if self
             .ctx

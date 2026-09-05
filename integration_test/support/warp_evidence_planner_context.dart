@@ -27,3 +27,11 @@ extension WarpPlannerNetworkEvidence on WarpDecisionRecord {
     return rate == expected;
   }
 }
+
+WarpRequestOccupancy? _warpPlannerRequestOccupancy(Map<String, Object?> json) {
+  final decision = _warpOptionalObject(json, 'warp_decision');
+  final capsule = _warpOptionalObject(decision, 'planner_replay_capsule');
+  final context = _warpOptionalObject(capsule, 'context');
+  final occupancy = _warpOptionalObject(context, 'request_occupancy');
+  return occupancy == null ? null : WarpRequestOccupancy.fromJson(occupancy);
+}

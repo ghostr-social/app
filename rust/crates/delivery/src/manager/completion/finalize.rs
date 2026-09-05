@@ -61,8 +61,7 @@ impl DeliveryWorker {
                 },
             ),
             Err(error) => {
-                self.finish_finalize_error(identity, advertised.as_deref(), error)
-                    .await;
+                self.finish_finalize_error(identity, advertised.as_deref(), &error);
             }
         }
     }

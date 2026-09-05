@@ -27,7 +27,7 @@ pub(super) async fn validate_asset(
         .ok_or(AssetValidationError::Rejected)?;
     match meta.delivery {
         DeliveryKind::Progressive => validate_progressive(context, input, post, &meta).await,
-        DeliveryKind::Hls => validate_hls(context, input, post),
+        DeliveryKind::Hls => validate_hls(context, input, &post),
     }
 }
 
@@ -50,7 +50,7 @@ async fn validate_progressive(
 fn validate_hls(
     context: &PlayerPreparationContext,
     input: &FfiPlayerPreparationReport,
-    post: PostId,
+    post: &PostId,
 ) -> Result<PlayerPreparationAuthority, AssetValidationError> {
     let revision = parse_hls_asset_revision(&input.asset_id)?;
     let authority = context
@@ -91,7 +91,7 @@ fn parse_hls_asset_revision(asset_id: &str) -> Result<u64, AssetValidationError>
     require(!raw.is_empty() && raw.bytes().all(|byte| byte.is_ascii_digit()))?;
     let revision = raw
         .parse::<u64>()
-        .map_err(|_| AssetValidationError::Rejected)?;
+        .map_err(|_invalid_revision| AssetValidationError::Rejected)?;
     require(revision > 0 && raw == revision.to_string())?;
     Ok(revision)
 }

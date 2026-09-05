@@ -9,6 +9,10 @@ extension _VideoPlayerSurfaceTeardownGate on _VideoPlayerSurfaceState {
     );
     if (requirement == _ControllerTeardownRequirement.unproven) {
       _exhaustAfterUnprovenTeardown();
+      await Future.any([_lifecycle.proofRecovered, cancelled]);
+      if (_isClosing || cancellation.isCompleted) return false;
+      _refresh(() => _recoveryState = _VideoPlayerRecoveryState.ready);
+      return _canAcquireAfterTeardown(cancellation);
     }
     return requirement == _ControllerTeardownRequirement.proven &&
         !_isClosing &&

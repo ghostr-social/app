@@ -40,7 +40,7 @@ final class _Fixture {
       feed: repository,
       engagement: repository,
       optional: FeedOptionalDependencies(
-        delivery: FeedDeliveryDependencies(
+        delivery: FeedDeliveryDependencies.withReadyRescue(
           deliveryUpdates: delivery,
           preparationUpdates: preparation,
         ),

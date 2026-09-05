@@ -8,10 +8,10 @@ use crate::{DeliveryKind, PostId, VideoMeta};
 use core::time::Duration;
 
 #[test]
-fn catalog_refuses_a_rendition_with_a_known_quarantined_digest() {
+fn catalog_allows_a_healthy_rendition_after_an_unrelated_source_mismatch() {
     let digest = "d".repeat(64);
     let mut catalog = Catalog::new();
-    quarantine_digest(&mut catalog, &digest);
+    reject_failed_source(&mut catalog, &digest);
     let post = PostId::new("adaptive");
     let high = meta("high", &"a".repeat(64));
     let low = meta("low", &digest);
@@ -20,19 +20,19 @@ fn catalog_refuses_a_rendition_with_a_known_quarantined_digest() {
     let (network, observation, target) = stalled_selection();
     let selected = catalog.select_rendition(&post, network, observation, target);
 
-    assert!(selected.is_none());
-    let active = catalog.lookup(&post).expect("valid test fixture");
-    assert_eq!(active.meta.urls, vec!["https://high.example/video.mp4"]);
+    assert!(selected.is_some());
+    let active = catalog.lookup(&post).expect("fixture");
+    assert_eq!(active.meta.urls, vec!["https://low.example/video.mp4"]);
     assert!(!active.is_quarantined());
 }
 
-fn quarantine_digest(catalog: &mut Catalog, digest: &str) {
+fn reject_failed_source(catalog: &mut Catalog, digest: &str) {
     let post = PostId::new("failed");
     let binding = catalog.upsert(post, meta("failed", digest));
     let identity = binding
         .transfer("https://failed.example/video.mp4")
-        .expect("valid test fixture");
-    catalog.quarantine_mirror_group(&identity, digest, 1);
+        .expect("fixture");
+    catalog.quarantine_source(&identity, digest, 1);
 }
 
 fn stalled_selection() -> (
@@ -52,14 +52,14 @@ fn stalled_selection() -> (
         1_000,
         PlaybackPhase::NetworkStalled,
     )
-    .expect("valid test fixture");
+    .expect("fixture");
     let target =
         AdaptiveBufferPolicy::default().target(network, MediaConsumption::new(6_000_000, 1_000));
     (network, observation, target)
 }
 
 fn variant(meta: VideoMeta, bitrate: u64) -> VideoRendition {
-    VideoRendition::try_new(meta, Some(bitrate)).expect("valid test fixture")
+    VideoRendition::try_new(meta, Some(bitrate)).expect("fixture")
 }
 
 fn meta(name: &str, digest: &str) -> VideoMeta {

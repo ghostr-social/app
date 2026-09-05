@@ -8,6 +8,7 @@ use ghostr_engine::{ByteRange, PostId};
 use std::collections::HashSet;
 
 mod demand;
+mod protection;
 
 pub(super) fn build(state: &DeliveryState, inputs: &PlanInputs<'_>) -> Option<PlayabilitySnapshot> {
     let current = state.focus().current()?.clone();
@@ -70,7 +71,9 @@ fn candidate(
         .blocks_direct_playback();
     candidate.retrieval_eligible = position.retrieval_eligible;
     candidate.finalized = inputs.finalized.contains(&post);
-    if let Some(range) = demanded_range(inputs, &post) {
+    if let Some(range) =
+        demanded_range(inputs, &post).or_else(|| protection::demand(state, inputs, &post))
+    {
         demand::prioritize(&mut candidate, range);
         candidate.demanded = Some(range);
     }

@@ -2,9 +2,8 @@ use crate::gateway_fixture::{
     progressive_delivery::ProgressiveDeliveryHarness, progressive_fixture_bytes,
 };
 use crate::support::{
-    focus_and_wait, focus_trimmed_and_wait, held_prefix_after_tail, pending_transfer_sequence,
-    roster, seed_ready_ranges, wait_closed, wait_for_tail, wait_for_zero_byte_cancellation,
-    ControlledOrigin,
+    focus_and_wait, focus_trimmed_and_wait, held_prefix, pending_transfer_sequence, roster,
+    seed_ready_ranges, wait_closed, wait_for_zero_byte_cancellation, ControlledOrigin,
 };
 use ghostr_delivery::delivery_events::FocusItem;
 
@@ -32,8 +31,7 @@ impl CancelledPrefixScenario {
     }
 
     pub async fn cancel_speculative_prefix(&mut self) {
-        let prefix = held_prefix_after_tail(&mut self.origin).await;
-        wait_for_tail(&self.harness).await;
+        let prefix = held_prefix(&mut self.origin).await;
         let sequence = pending_transfer_sequence(&self.harness.delivery.handle);
         reverse_focus(&self.harness, &self.items).await;
         wait_closed(&prefix).await;
@@ -48,9 +46,7 @@ impl CancelledPrefixScenario {
 }
 
 async fn initial_focus(harness: &ProgressiveDeliveryHarness, items: &[FocusItem]) {
-    for (generation, current) in (1..=4).zip(0..=3) {
-        focus_and_wait(harness, items, current, generation).await;
-    }
+    focus_and_wait(harness, items, 5, 4).await;
 }
 
 async fn reverse_focus(harness: &ProgressiveDeliveryHarness, items: &[FocusItem]) {

@@ -40,9 +40,8 @@ async fn refocus_restarts_a_cancelled_demanded_prefix_beside_a_completed_tail() 
     );
     seed_prefix(&harness, &items).await;
     seed_tail(&harness, &items[6]).await;
-    for (generation, current) in (1..=4).zip(0..=3) {
-        focus_fixture::focus_and_wait(&harness, &items, current, generation).await;
-    }
+    // The target is the immediate next item under the two-item payload window.
+    focus_fixture::focus_and_wait(&harness, &items, 5, 4).await;
 
     let prefix = next_request(&mut origin, "initial prefix").await;
     assert_eq!(

@@ -20,7 +20,8 @@ final class _WarpUnsupportedHlsRescueDriver {
 
   Future<void> run() async {
     await _mount();
-    final evidence = await _waitForDecodedRescue();
+    await _navigateToAlternate();
+    final evidence = await _waitForDecodedAlternate();
     _expectLiveContract(evidence);
     await _unmount();
     await _waitForQuiescence();
@@ -39,6 +40,21 @@ final class _WarpUnsupportedHlsRescueDriver {
   bool _isLoaded() {
     final state = graph.cubit.state;
     return state is FeedLoaded && state.posts.length == 2;
+  }
+
+  Future<void> _navigateToAlternate() async {
+    await _wait(
+      () =>
+          _failure() != null &&
+          find.text('Video unavailable').evaluate().isNotEmpty,
+    );
+    expect(feed.activeIndex, 0);
+    expect(graph.focus.hadTransportRescue, isFalse);
+    final page = find.byType(PageView);
+    final gesture = await tester.startGesture(tester.getCenter(page));
+    await gesture.moveBy(Offset(0, -tester.getSize(page).height * 0.3));
+    await tester.pump(const Duration(milliseconds: 16));
+    await gesture.up();
   }
 
   Future<void> _unmount() async {

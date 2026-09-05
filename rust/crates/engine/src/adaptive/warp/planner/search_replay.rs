@@ -7,6 +7,7 @@ use super::super::search::ScoredSearchPlan;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum SearchReplayMode {
+    Core,
     Beam,
     GreedyExpansion,
     GreedyLatency,
@@ -19,13 +20,15 @@ impl SearchReplayMode {
         degraded: bool,
         reserve_progress: bool,
     ) -> Self {
-        if degraded || reserve_progress {
+        let reason = decision.pruned_plans.first().map(|plan| plan.reason);
+        if degraded || reserve_progress || reason == Some(SearchPruneReason::DemandedInput) {
             return Self::LeastRisk;
         }
         if !decision.used_greedy_fallback {
             return Self::Beam;
         }
-        match decision.pruned_plans.first().map(|plan| plan.reason) {
+        match reason {
+            Some(SearchPruneReason::OptimizationDisabled) => Self::Core,
             Some(SearchPruneReason::PlannerLatency) => Self::GreedyLatency,
             _ => Self::GreedyExpansion,
         }

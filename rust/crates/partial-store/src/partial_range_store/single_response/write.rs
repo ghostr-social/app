@@ -46,6 +46,10 @@ impl PartialRangeStore {
             return Ok(false);
         };
         match state.storage {
+            SingleResponseStorage::Memory => {
+                self.write_transient(identity.post().as_str(), write.offset, write.bytes)
+                    .await
+            }
             SingleResponseStorage::Live { .. } => {
                 self.write_live_single_response(identity, state, write)
                     .await

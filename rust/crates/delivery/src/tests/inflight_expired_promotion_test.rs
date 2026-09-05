@@ -4,6 +4,7 @@ use crate::chunk::downloader::{
     HttpResponseEvidence, OpenedResponse, ResponseObservation, ResponseWriteMode,
 };
 use crate::manager::inflight::{ActionRegistration, InFlightChunks};
+use anyhow::Context as _;
 use ghostr_engine::adaptive::{
     PreemptionAuthority, PromotionGrant, RetrievalRequest, WholeBodyContract, WholeFetchReason,
 };
@@ -15,7 +16,7 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 
 #[tokio::test]
-async fn promotion_expired_at_headers_is_rejected_before_store_open() {
+async fn promotion_expired_at_headers_is_rejected_before_store_open() -> anyhow::Result<()> {
     let root = temp_directory("expired-promotion");
     let store = PartialRangeStore::with_capacity(
         root.clone(),
@@ -26,15 +27,9 @@ async fn promotion_expired_at_headers_is_rejected_before_store_open() {
     let binding = catalog.upsert(PostId::new("post"), meta());
     let identity = binding
         .transfer("https://origin.test/video")
-        .expect("valid test fixture");
-    store
-        .bind_representation(binding)
-        .await
-        .expect("valid test fixture");
-    let action = store
-        .reserve_action(&identity, 1, 16)
-        .await
-        .expect("valid test fixture");
+        .context("bound source")?;
+    store.bind_representation(binding).await?;
+    let action = store.reserve_action(&identity, 1, 16).await?;
     let bytes = ByteRange::new(4, 8);
     let chunk = ChunkId {
         post: PostId::new("post"),
@@ -85,14 +80,10 @@ async fn promotion_expired_at_headers_is_rejected_before_store_open() {
     );
 
     assert!(!active.authorizes_response(&attempt, &action, &response, 101));
-    assert!(store
-        .media_snapshot("post")
-        .await
-        .expect("valid test fixture")
-        .ranges()
-        .is_empty());
+    assert!(store.media_snapshot("post").await?.ranges().is_empty());
     store.release_action(&action).await;
-    std::fs::remove_dir_all(root).expect("valid test fixture");
+    std::fs::remove_dir_all(root)?;
+    Ok(())
 }
 
 fn meta() -> VideoMeta {

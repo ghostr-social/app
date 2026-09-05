@@ -117,6 +117,7 @@ fn engine_configuration(
         relays: configuration.read_relays.clone(),
         max_parallel_downloads: EngineParams::default().balanced_concurrency,
         max_storage_bytes: configuration.max_storage_bytes,
+        internet_data_limit: ghostr_net::internet_allowance::InternetDataLimit::Unlimited,
         network_status: initial_network.into(),
         device_integration_origin,
     }

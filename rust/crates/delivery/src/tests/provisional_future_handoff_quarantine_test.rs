@@ -15,7 +15,7 @@ fn quarantine_revokes_detached_handoff_retention() {
         fixture
             .state
             .catalog_mut()
-            .quarantine_mirror_group(&identity, DIGEST, OBSERVED_AT_MS),
+            .quarantine_source(&identity, DIGEST, OBSERVED_AT_MS),
         vec![PostId::new(NEXT)]
     );
     assert_eq!(

@@ -43,35 +43,39 @@ impl ProgressSink {
 }
 
 impl ChunkWrite for ProgressSink {
-    async fn accept(
+    fn accept(
         &self,
         _generation: &OriginGeneration,
         _mode: ResponseWriteMode,
-    ) -> anyhow::Result<()> {
-        Ok(())
+    ) -> impl core::future::Future<Output = anyhow::Result<()>> + Send {
+        core::future::ready(Ok(()))
     }
-
-    async fn write(
+    fn write(
         &self,
         _generation: &OriginGeneration,
         _mode: ResponseWriteMode,
         offset: u64,
         bytes: &[u8],
-    ) -> anyhow::Result<bool> {
-        anyhow::ensure!(offset == self.prefix_end(), "non-contiguous test write");
-        self.end
-            .store(offset + bytes.len() as u64, Ordering::Release);
-        self.changed.notify_waiters();
-        Ok(true)
+    ) -> impl core::future::Future<Output = anyhow::Result<bool>> + Send {
+        let result = self.write_prefix(offset, bytes);
+        core::future::ready(result)
     }
-
-    async fn finish(
+    fn finish(
         &self,
         _generation: &OriginGeneration,
         _mode: ResponseWriteMode,
         _total: Option<u64>,
         _complete: bool,
-    ) -> anyhow::Result<bool> {
+    ) -> impl core::future::Future<Output = anyhow::Result<bool>> + Send {
+        core::future::ready(Ok(true))
+    }
+}
+impl ProgressSink {
+    fn write_prefix(&self, offset: u64, bytes: &[u8]) -> anyhow::Result<bool> {
+        anyhow::ensure!(offset == self.prefix_end(), "non-contiguous test write");
+        self.end
+            .store(offset + bytes.len() as u64, Ordering::Release);
+        self.changed.notify_waiters();
         Ok(true)
     }
 }

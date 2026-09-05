@@ -14,13 +14,17 @@ use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::sync::Mutex;
 
-#[tokio::test]
+#[tokio::test(start_paused = true)]
 async fn issuance_waits_for_known_extent_before_authorizing_player() {
     let (state, root) = state();
     let meta = meta();
     let mut catalog = Catalog::new();
     let binding = catalog.upsert(PostId::new("clip"), meta.clone());
-    state.store.bind_representation(binding).await.unwrap();
+    state
+        .store
+        .bind_representation(binding)
+        .await
+        .expect("fixture");
     state.cache.replace([CacheVideo {
         id: "clip".to_owned(),
         meta: meta.clone(),
@@ -29,23 +33,27 @@ async fn issuance_waits_for_known_extent_before_authorizing_player() {
 
     let issued = issue(&state, "clip", &meta);
     tokio::pin!(issued);
-    assert!(tokio::time::timeout(Duration::from_millis(25), &mut issued)
+    assert!(tokio::time::timeout(Duration::from_secs(3), &mut issued)
         .await
         .is_err());
 
-    state.store.set_total_len("clip", 16).await.unwrap();
+    state
+        .store
+        .set_total_len("clip", 16)
+        .await
+        .expect("fixture");
     let capability = tokio::time::timeout(Duration::from_secs(1), issued)
         .await
-        .unwrap()
-        .unwrap();
-    let snapshot = state.store.media_snapshot("clip").await.unwrap();
+        .expect("fixture")
+        .expect("fixture");
+    let snapshot = state.store.media_snapshot("clip").await.expect("fixture");
     assert!(
         state
             .capabilities
             .authorizes(capability.as_str(), "clip", &snapshot)
             .await
     );
-    std::fs::remove_dir_all(root).unwrap();
+    std::fs::remove_dir_all(root).expect("fixture");
 }
 
 fn state() -> (Arc<ProgressiveState>, PathBuf) {
@@ -53,7 +61,7 @@ fn state() -> (Arc<ProgressiveState>, PathBuf) {
         "ghostr-progressive-known-extent-{}",
         SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .unwrap()
+            .expect("fixture")
             .as_nanos()
     ));
     let store = Arc::new(PartialRangeStore::with_capacity(
@@ -62,14 +70,12 @@ fn state() -> (Arc<ProgressiveState>, PathBuf) {
         StoreCapacity::system(u64::MAX),
     ));
     let (demand, _) = demand_channel();
-    let mut timing = ProgressiveTiming::default();
-    timing.unknown_length_wait = Duration::from_secs(30);
     let state = ProgressiveState {
         store,
         demand,
         cache: Default::default(),
         network: NetworkThrottle::new(),
-        timing,
+        timing: ProgressiveTiming::default(),
         capabilities: ProgressiveCapabilities::production(),
     };
     (Arc::new(state), root)

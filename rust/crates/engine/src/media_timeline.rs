@@ -5,6 +5,7 @@ use crate::ByteRange;
 
 mod boxes;
 mod classic;
+pub mod compiled;
 mod control;
 mod limits;
 mod ranges;
@@ -12,6 +13,7 @@ mod segments;
 mod selection;
 mod sidx;
 mod startup;
+mod timing;
 
 pub use control::TimelineParseControl;
 pub use ranges::normalize;
@@ -40,7 +42,7 @@ pub enum TimelineError {
     Unsupported,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct MediaTimeline {
     inspected: Vec<ByteRange>,
     pub(super) metadata: Vec<ByteRange>,
@@ -52,6 +54,8 @@ pub struct MediaTimeline {
     fragmented_indexes: usize,
     media_data: Vec<boxes::MediaData>,
     classic_video: bool,
+    #[serde(skip)]
+    startup: Option<StartupFootprint>,
     pub(super) media: Vec<TimedRange>,
 }
 
@@ -61,10 +65,12 @@ pub(crate) struct PlayableExtent {
     pub(super) playable_ms: u64,
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, serde::Serialize, serde::Deserialize)]
 pub(crate) struct TimedRange {
-    pub(super) start_ms: u64,
-    pub(super) end_ms: u64,
+    pub(super) time: timing::PresentationTime,
+    decode_start: Option<u64>,
+    track: u16,
+    sync_sample: Option<u32>,
     pub(super) bytes: ByteRange,
 }
 
@@ -83,8 +89,8 @@ impl MediaTimeline {
     }
 
     pub(super) fn duration_ms(&self) -> Option<u64> {
-        let start = self.media.iter().map(|range| range.start_ms).min()?;
-        let end = self.media.iter().map(|range| range.end_ms).max()?;
+        let start = self.media.iter().map(|range| range.time.start_ms()).min()?;
+        let end = self.media.iter().map(|range| range.time.end_ms()).max()?;
         (end > start).then_some(end - start)
     }
 
@@ -101,13 +107,17 @@ impl MediaTimeline {
             .iter()
             .map(|range| PlayableExtent {
                 bytes: range.bytes,
-                playable_ms: range.end_ms.saturating_sub(range.start_ms).max(1),
+                playable_ms: range
+                    .time
+                    .end_ms()
+                    .saturating_sub(range.time.start_ms())
+                    .max(1),
             })
             .collect()
     }
 
     pub fn startup_footprint(&self) -> Option<StartupFootprint> {
-        StartupFootprint::from_timeline(self)
+        self.startup.clone()
     }
 
     pub fn fast_start_remuxable(&self, total: u64) -> bool {

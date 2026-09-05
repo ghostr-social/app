@@ -46,6 +46,7 @@ fn configuration(cache_directory: std::path::PathBuf, source: &str) -> GatewayCo
         relays: Vec::new(),
         max_parallel_downloads: 2,
         max_storage_bytes: 1_048_576,
+        internet_data_limit: ghostr_net::internet_allowance::InternetDataLimit::Unlimited,
         network_status: ghostr_delivery::delivery_events::DeliveryNetworkStatus::new(
             rust_lib_ghostr::engine::origin_model::NetworkClass::Wifi,
             1,

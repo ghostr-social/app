@@ -12,6 +12,7 @@ mod publication;
 mod queue;
 mod receive;
 mod retry;
+mod source;
 
 use publication::TimelinePublications;
 use retry::TimelineRetries;
@@ -41,6 +42,7 @@ pub(crate) struct TimelineCoordinator {
     wake_ready: Option<TimelineResult>,
     retries: TimelineRetries,
     publications: TimelinePublications,
+    sources: HashMap<PostId, super::evidence::TimelineIndexSource>,
 }
 
 impl TimelineCoordinator {
@@ -70,6 +72,7 @@ impl TimelineCoordinator {
             wake_ready: None,
             retries: TimelineRetries::new(),
             publications: TimelinePublications::default(),
+            sources: HashMap::new(),
         }
     }
 
@@ -127,6 +130,7 @@ impl TimelineCoordinator {
     }
 
     pub(super) fn retain_active(&mut self, posts: &HashSet<PostId>) {
+        self.sources.retain(|post, _| posts.contains(post));
         self.attempts.retain_active(posts);
         self.pending.retain(|post, _| posts.contains(post));
         self.order.retain(|post| posts.contains(post));
@@ -148,6 +152,7 @@ impl TimelineCoordinator {
     }
 
     pub(crate) fn clear(&mut self) {
+        self.sources.clear();
         self.attempts.clear();
         self.pending.clear();
         self.order.clear();

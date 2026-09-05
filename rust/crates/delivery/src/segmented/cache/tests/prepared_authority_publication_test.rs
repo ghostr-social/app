@@ -1,5 +1,4 @@
 use super::prepared_authority_fixture::PreparedAuthorityFixture;
-use crate::segmented::SegmentedAssetRevision;
 
 const ROOT: &str = "https://media.example/index.m3u8";
 
@@ -10,7 +9,6 @@ fn ready_publication_owns_a_typed_stable_asset_authority() {
 
     fixture.publish(1, b"#EXTM3U\n");
     let initial = fixture.authority();
-    let _: SegmentedAssetRevision = initial.asset_revision();
     assert_eq!(initial.post(), &fixture.post);
     assert_eq!(initial.representation_id(), &fixture.representation);
     assert!(fixture.cache.accepts_prepared_authority(&initial));

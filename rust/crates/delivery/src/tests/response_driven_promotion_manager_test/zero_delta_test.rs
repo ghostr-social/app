@@ -15,11 +15,10 @@ async fn nonzero_range_can_promote_semantics_without_more_authority() {
         .worker
         .register_promotable_response_for_test(&fixture.post, SOURCE, valid_until_ms)
         .await;
-    let admission = fixture.worker.authorize_response_for_test(
-        attempt.clone(),
-        action.clone(),
-        response(),
-    );
+    let admission =
+        fixture
+            .worker
+            .authorize_response_for_test(attempt.clone(), action.clone(), response());
     fixture.worker.wait_for_response_request_for_test().await;
 
     assert!(fixture.step().await);
@@ -31,10 +30,18 @@ async fn nonzero_range_can_promote_semantics_without_more_authority() {
     assert_eq!(active[0].request(), promoted_request());
     assert_zero_authority_trace(&fixture.handle.decision_history_json().expect("history"));
     let finished = fixture.worker.finish_response_attempt_for_test(&attempt);
-    assert_eq!(finished.network_reservation().expect("reservation").committed_bytes(), 4);
+    assert_eq!(
+        finished
+            .network_reservation()
+            .expect("reservation")
+            .committed_bytes(),
+        4
+    );
     fixture.store.release_action(&action).await;
     drop(fixture.store);
-    tokio::fs::remove_dir_all(fixture.root).await.expect("fixture cleanup");
+    tokio::fs::remove_dir_all(fixture.root)
+        .await
+        .expect("fixture cleanup");
 }
 
 fn response() -> OpenedResponse {

@@ -1,62 +1,56 @@
+import 'warp_native_request_bounds.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ghostr/features/settings/domain/data_usage_level.dart';
+import 'package:video_player/video_player.dart';
 
 import 'device_playback_probe.dart';
 import 'device_qoe_targets.dart';
 import 'progressive_device_origin.dart';
 import 'warp_evidence_models.dart';
 import 'warp_feed_playback_journey.dart';
-import 'warp_recovery_frontier.dart';
 
 part 'warp_bandwidth_recovery_scenario_open.dart';
-part 'warp_bandwidth_recovery_scenario_baseline.dart';
-part 'warp_bandwidth_recovery_scenario_impair.dart';
-part 'warp_bandwidth_recovery_scenario_traverse.dart';
-part 'warp_bandwidth_recovery_scenario_recover.dart';
-part 'warp_bandwidth_recovery_scenario_pairing.dart';
-part 'warp_bandwidth_recovery_scenario_recovery_pairing.dart';
-part 'warp_bandwidth_recovery_scenario_recovery_swipe.dart';
-part 'warp_bandwidth_recovery_scenario_recovery_activation.dart';
-part 'warp_bandwidth_recovery_scenario_recovery_evidence.dart';
-part 'warp_bandwidth_recovery_scenario_recovery_response.dart';
-part 'warp_bandwidth_recovery_scenario_origin_acceptance.dart';
+part 'warp_bandwidth_recovery_scenario_measure.dart';
 part 'warp_bandwidth_recovery_scenario_acceptance.dart';
 
-typedef _PacedFeed = ({
-  WarpFeedPlaybackJourney journey,
-  PlaybackFocus startup,
-  BigInt focusGeneration,
-  ProgressiveOriginBandwidthTrigger lossTrigger,
-  ProgressiveOriginLinkProfile fastProfile,
-  WarpDecisionRecord baselineDecision,
-});
-
-typedef _ImpairedFeed = ({
-  ProgressiveOriginLinkProfile profile,
-  ProgressiveOriginLinkWindow window,
-  WarpDecisionRecord decision,
-  WarpReadyWindow ready,
-});
-
-typedef _RecoveryFocus = ({
-  PlaybackFocus focus,
-  WarpDecisionRecord decision,
-  int planRevision,
-  WarpReadyWindow ready,
-  WarpRecoveryFrontier frontier,
-  ProgressiveOriginBandwidthTrigger recoveryTrigger,
-});
-
 Future<void> runWarpBandwidthRecoveryScenario(WidgetTester tester) async {
-  final opened = await _openPacedFeed(tester);
-  final impaired = await _impairSharedLink(tester, opened);
-  final recovery = await _traverseImpairedFeed(tester, opened, impaired);
-  await _recoverSharedLink(tester, opened, impaired, recovery);
+  final journey = await _openPacedFeed(tester);
+  final baseline = await _baseline(tester, journey);
+  final loss = await _changeLink(tester, journey, (
+    path: '/third.mp4',
+    bandwidth: 700,
+    baseline: baseline,
+    advance: 2,
+  ));
+  final recovery = await _changeLink(tester, journey, (
+    path: '/sixth.mp4',
+    bandwidth: 2500,
+    baseline: loss,
+    advance: 3,
+  ));
+  expect(recovery.networkThroughputBps, greaterThan(loss.networkThroughputBps));
+  await _expectBandwidthAcceptance(tester, journey);
 }
 
 Future<void> runWarpBandwidthWarmReturnScenario(WidgetTester tester) async {
-  final opened = await _openPacedFeed(tester);
-  final impaired = await _impairSharedLink(tester, opened);
-  await _traverseImpairedWarmReturn(tester, opened, impaired);
+  final journey = await _openPacedFeed(tester);
+  await journey.waitForNativeStoreCoverage(tester, ['current']);
+  final baseline = await _baseline(tester, journey);
+  await _changeLink(tester, journey, (
+    path: '/third.mp4',
+    bandwidth: 700,
+    baseline: baseline,
+    advance: 2,
+  ));
+  final before = journey.resources.origin.bytesServed('current');
+  final reverse = await journey.swipeBackward(
+    tester,
+    count: 2,
+    afterSequence: journey.focusCursor,
+  );
+  await _expectMoving(tester, journey, reverse.focuses.last);
+  await journey.waitForOriginQuiescence(tester, ['current']);
+  expect(journey.resources.origin.bytesServed('current'), before);
+  await _expectBandwidthAcceptance(tester, journey);
 }

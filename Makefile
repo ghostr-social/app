@@ -174,7 +174,7 @@ native-dead-code: ## Find Rust declarations reachable only from tests.
 
 native-test: web-contract-test ## Run Rust tests.
 	cd rust && cargo test -p ghostr-gateway --no-default-features --test debug_web_exclusion_test
-	cd rust && cargo test --workspace --all-features
+	cd rust && cargo test --workspace --all-features --no-fail-fast
 
 web-contract-test: ## Verify that the web tool is Rust-only.
 	sh test/tool/web_target_contract_test.sh
@@ -242,6 +242,11 @@ warp-lab-android: android-agent-avd-create ## Open a debug-only WARP test route 
 	$(FLUTTER) run --debug --no-pub \
 		--target "$(WARP_LAB_TARGET)" --route "$(WARP_LAB_ROUTE)" \
 		-d "$(VIDEO_ANDROID_EMULATOR_SERIAL)"
+
+# Native debug symbols and incremental objects exhaust host storage during the device matrix.
+video-android-physical-tests video-android-offline-restart video-android-lifecycle: export CARGO_PROFILE_DEV_DEBUG = 0
+video-android-physical-tests video-android-offline-restart video-android-lifecycle: export CARGO_INCREMENTAL = 0
+video-android-physical-tests video-android-offline-restart video-android-lifecycle: export RUSTC_WRAPPER =
 
 video-android-physical-tests: ## Run the device video playback matrix on physical Android.
 	@test -n "$(ANDROID_PHYSICAL_SERIAL)" || { echo "Set ANDROID_PHYSICAL_SERIAL to an attached device serial." >&2; exit 1; }

@@ -26,7 +26,7 @@ async fn malformed_validatorless_response_preserves_trusted_cached_bytes() {
         .store
         .write_range(fixture.post.as_str(), 0, &[7; 4])
         .await
-        .expect("valid test fixture");
+        .expect("fixture");
 
     fixture.worker.queue_response_for_test(attempt, rejected());
     assert!(fixture.step().await);
@@ -39,12 +39,12 @@ async fn malformed_validatorless_response_preserves_trusted_cached_bytes() {
         .store
         .present_ranges(fixture.post.as_str())
         .await
-        .expect("valid test fixture");
+        .expect("fixture");
     assert_eq!(ranges.len(), 1);
     assert_eq!(ranges[0], 0..4);
     tokio::fs::remove_dir_all(fixture.root)
         .await
-        .expect("valid test fixture");
+        .expect("fixture");
 }
 
 fn accepted() -> OpenedResponse {

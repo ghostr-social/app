@@ -28,7 +28,7 @@ pub async fn run<'a, W: ChunkWrite + ?Sized>(
     execution: TransferExecution<'a, W>,
 ) -> anyhow::Result<ChunkResult> {
     let opened = match opened::send(spec, execution.cancel, execution.traffic).await? {
-        opened::Opened::Response(opened) => opened,
+        opened::Opened::Response(opened) => *opened,
         opened::Opened::CancelledBeforeRequest => return Ok(outcome::cancelled_before_request()),
         opened::Opened::CancelledAfterRequest => return Ok(outcome::cancelled_after_request()),
     };

@@ -26,7 +26,7 @@ fn samples(stats: &HostStats, url: &str, network: NetworkClass) -> f64 {
     let now = now_ms();
     let query = OriginQuery::new(
         url,
-        OriginContext::new(RequestMethod::RangeGet, 16, MediaClass::ProgressiveMp4)
+        OriginContext::new(RequestMethod::FullGet, 16, MediaClass::Unknown)
             .with_network(network)
             .with_observed_at_ms(now),
     );
@@ -36,7 +36,7 @@ fn samples(stats: &HostStats, url: &str, network: NetworkClass) -> f64 {
         .effective_samples
 }
 
-fn now_ms() -> u64 {
+pub fn now_ms() -> u64 {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .expect("valid test fixture")

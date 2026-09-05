@@ -1,6 +1,11 @@
 use super::WarpPlannerConfig;
 
 impl WarpPlannerConfig {
+    pub(crate) fn with_lookahead(mut self) -> Self {
+        self.profile = super::PlannerProfile::Lookahead1;
+        self
+    }
+
     pub(crate) const fn with_rescue_thresholds(
         mut self,
         safety_bps: u16,

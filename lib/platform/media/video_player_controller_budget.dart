@@ -17,15 +17,13 @@ final class _ControllerCancelled extends _ControllerAcquisition {
 }
 
 final class _ControllerExhausted extends _ControllerAcquisition {
-  const _ControllerExhausted();
+  const _ControllerExhausted(this.recovered);
+
+  final Future<void> recovered;
 }
 
 final class _VideoPlayerControllerBudget {
-  _VideoPlayerControllerBudget(this.maximum, {int? initialLimit})
-    : assert(
-        initialLimit == null || initialLimit > 0 && initialLimit <= maximum,
-      ),
-      _limit = initialLimit ?? maximum;
+  _VideoPlayerControllerBudget(this.maximum) : _limit = maximum;
 
   final int maximum;
   int _limit;
@@ -33,9 +31,9 @@ final class _VideoPlayerControllerBudget {
   final Set<_ControllerPermit> _outstanding = {};
   final Map<_ControllerSettlement, Completer<void>> _pressured = {};
   Completer<void>? _pressureCancellation;
+  Completer<void>? _capacityRecovery;
   var _inUse = 0;
   var _quarantined = 0;
-  var _memoryConstrained = false;
 
   Future<_ControllerAcquisition> acquire({
     required Future<void> cancelled,
@@ -43,7 +41,7 @@ final class _VideoPlayerControllerBudget {
     required _ControllerInterest prioritized,
   }) {
     if (!wanted()) return Future.value(const _ControllerCancelled());
-    if (_isExhausted) return Future.value(const _ControllerExhausted());
+    if (_isExhausted) return Future.value(_exhausted);
     if (_inUse < _limit) return Future.value(_ControllerGranted(_claim()));
     final waiter = _ControllerWaiter(wanted, prioritized);
     _waiters.add(waiter);
@@ -70,8 +68,13 @@ final class _VideoPlayerControllerBudget {
     _syncPressure();
   }
 
-  void _release(_ControllerPermit permit) {
+  void _release(_ControllerPermit permit, {bool wasQuarantined = false}) {
+    if (wasQuarantined) _quarantined -= 1;
     _outstanding.remove(permit);
+    if (!_isExhausted) {
+      _capacityRecovery?.complete();
+      _capacityRecovery = null;
+    }
     final waiter = _inUse <= _limit ? _takeNext() : null;
     if (waiter != null) {
       waiter.complete(_ControllerGranted(_newPermit()));
@@ -95,7 +98,7 @@ final class _VideoPlayerControllerBudget {
     final waiters = List<_ControllerWaiter>.of(_waiters);
     _waiters.clear();
     for (final waiter in waiters) {
-      waiter.complete(const _ControllerExhausted());
+      waiter.complete(_exhausted);
     }
     _syncPressure();
   }
@@ -107,6 +110,9 @@ final class _VideoPlayerControllerBudget {
 
   bool get _isExhausted => _quarantined >= _limit;
 
+  _ControllerExhausted get _exhausted =>
+      _ControllerExhausted((_capacityRecovery ??= Completer<void>()).future);
+
   VideoPlaybackCapacitySnapshot get snapshot => (
     inUse: _inUse,
     outstanding: _outstanding.length,
@@ -116,20 +122,8 @@ final class _VideoPlayerControllerBudget {
   );
 
   void constrainTo(int limit) {
-    _memoryConstrained = true;
     _limit = limit.clamp(1, maximum);
     _dropUnwanted();
-    _syncPressure();
-  }
-
-  void enableExtendedCapacity() {
-    if (_memoryConstrained || _limit == maximum) return;
-    _limit = maximum;
-    while (_inUse < _limit) {
-      final waiter = _takeNext();
-      if (waiter == null) break;
-      waiter.complete(_ControllerGranted(_claim()));
-    }
     _syncPressure();
   }
 
@@ -166,23 +160,26 @@ final class _ControllerPermit {
 
   final _VideoPlayerControllerBudget _budget;
   _ControllerSettlement? _retirement;
-  var _settled = false;
+  var _state = _ControllerPermitState.active;
 
   void retire(_ControllerSettlement settlement) {
-    if (_settled || _retirement != null) return;
+    if (_state != _ControllerPermitState.active || _retirement != null) return;
     _retirement = settlement;
     _budget._retire(this, settlement);
   }
 
   void release() {
-    if (_settled) return;
-    _settled = true;
-    _budget._release(this);
+    if (_state == _ControllerPermitState.released) return;
+    final quarantined = _state == _ControllerPermitState.quarantined;
+    _state = _ControllerPermitState.released;
+    _budget._release(this, wasQuarantined: quarantined);
   }
 
   void quarantine() {
-    if (_settled) return;
-    _settled = true;
+    if (_state != _ControllerPermitState.active) return;
+    _state = _ControllerPermitState.quarantined;
     _budget._quarantine(this);
   }
 }
+
+enum _ControllerPermitState { active, quarantined, released }

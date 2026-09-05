@@ -24,7 +24,7 @@ Future<Nip01Event> _longSessionEvent(
   int index,
   int published,
 ) async {
-  final label = 'long-${index.toString().padLeft(2, '0')}';
+  final label = _longSessionLabel(index);
   final event = Nip01Event(
     pubKey: signer.getPublicKey(),
     kind: 22,
@@ -59,3 +59,6 @@ List<List<String>> _longSessionTags(Uri url, int published) => [
     'dim 320x180',
   ],
 ];
+
+String _longSessionLabel(int index) =>
+    'long-${index.toString().padLeft(2, '0')}';

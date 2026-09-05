@@ -62,20 +62,17 @@ fn projected_readiness(
     player_verified: bool,
 ) -> FfiPlaybackPreparationReadiness {
     match readiness {
-        Some(CertifiedReadiness::Ready(_, _)) if player_verified => {
+        Some(CertifiedReadiness::Ready(_, _) | CertifiedReadiness::PlayerVerified(_))
+            if player_verified =>
+        {
             FfiPlaybackPreparationReadiness::Ready
         }
-        Some(CertifiedReadiness::PlayerVerified(_)) if player_verified => {
-            FfiPlaybackPreparationReadiness::Ready
-        }
-        Some(CertifiedReadiness::Ready(_, _)) => {
+        Some(CertifiedReadiness::Ready(_, _) | CertifiedReadiness::Structural(_)) => {
             FfiPlaybackPreparationReadiness::StructuralStartable
         }
-        Some(CertifiedReadiness::PlayerVerified(_)) => FfiPlaybackPreparationReadiness::Preparing,
-        Some(CertifiedReadiness::Structural(_)) => {
-            FfiPlaybackPreparationReadiness::StructuralStartable
+        Some(CertifiedReadiness::PlayerVerified(_)) | None => {
+            FfiPlaybackPreparationReadiness::Preparing
         }
-        None => FfiPlaybackPreparationReadiness::Preparing,
     }
 }
 

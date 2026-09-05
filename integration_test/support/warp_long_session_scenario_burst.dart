@@ -1,7 +1,7 @@
 part of 'warp_long_session_scenario.dart';
 
-const _cancellationVideoId = 'long-06';
-const _cancellationPath = '/$_cancellationVideoId.mp4';
+String get _cancellationVideoId => _longSessionLabel(_cancellationPostIndex);
+String get _cancellationPath => '/$_cancellationVideoId.mp4';
 const _cancellationBurstCount = 3;
 const _unsettledBurstHandoffs = _cancellationBurstCount - 1;
 
@@ -13,7 +13,10 @@ extension _WarpLongSessionBurst on _WarpLongSessionDriver {
   }
 
   Future<void> _swipeCancellationBurst() async {
-    await _wait(() => cancellationGate.isReached);
+    await _wait(
+      () => cancellationGate.isReached,
+      awaiting: 'the immediate next item to reach the cancellation gate',
+    );
     cancellationRequest = _exactGatedRequest();
     await _captureCancellationDecisionSequence();
     final expected = _expectedFocuses(

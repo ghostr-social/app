@@ -15,61 +15,56 @@ async fn policy_debt_retry_never_removes_a_manifest_writers_staging_file() {
     let binding = catalog.upsert(PostId::new("clip"), meta());
     let identity = binding
         .transfer("https://cdn.example/video")
-        .expect("valid test fixture");
+        .expect("fixture");
     fixture
         .store
         .bind_representation(binding.clone())
         .await
-        .expect("valid test fixture");
+        .expect("fixture");
+    crate::tests::store_fixture::authorize(&fixture.store, &identity, "generation").await;
     fixture
         .store
         .write_range("clip", 0, b"abcdefghijkl")
         .await
-        .expect("valid test fixture");
+        .expect("fixture");
     fixture
         .store
         .set_total_len("clip", 12)
         .await
-        .expect("valid test fixture");
+        .expect("fixture");
     tokio::fs::write(fixture.root.join("clip.part.evict"), b"abcdefgh")
         .await
-        .expect("valid test fixture");
+        .expect("fixture");
     tokio::fs::write(
         fixture.root.join("clip.evict.intent"),
         br#"{"version":1,"retained_bytes":8}"#,
     )
     .await
-    .expect("valid test fixture");
+    .expect("fixture");
     std::fs::set_permissions(&fixture.root, std::fs::Permissions::from_mode(0o500))
-        .expect("valid test fixture");
+        .expect("fixture");
     let reopened = crate::tests::store_fixture::reopened(&fixture);
-    reopened
-        .store
-        .load_existing()
-        .await
-        .expect("valid test fixture");
+    reopened.store.load_existing().await.expect("fixture");
 
     std::fs::set_permissions(&fixture.root, std::fs::Permissions::from_mode(0o700))
-        .expect("valid test fixture");
+        .expect("fixture");
     let writer_staging = fixture.root.join("clip.ranges.json.tmp");
     tokio::fs::write(&writer_staging, b"writer-owned")
         .await
-        .expect("valid test fixture");
+        .expect("fixture");
     reopened
         .store
         .bind_representation(binding)
         .await
-        .expect("valid test fixture");
+        .expect("fixture");
     let action = reopened
         .store
         .reserve_action(&identity, 1, 8)
         .await
-        .expect("valid test fixture");
+        .expect("fixture");
 
     assert_eq!(
-        tokio::fs::read(writer_staging)
-            .await
-            .expect("valid test fixture"),
+        tokio::fs::read(writer_staging).await.expect("fixture"),
         b"writer-owned"
     );
     assert_eq!(reopened.store.used_bytes().await, 12);

@@ -35,7 +35,7 @@ class AuditedVideoPlayerPlatform extends VideoPlayerPlatform {
     final stream = StreamController<VideoEvent>.broadcast();
     _streams[id] = stream;
     _states[id] = _PlayerState();
-    if (autoInitialize) Timer.run(() => stream.add(_initialized));
+    if (autoInitialize) Timer.run(() => initialize(id));
     return id;
   }
 

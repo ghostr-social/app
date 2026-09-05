@@ -95,6 +95,8 @@ impl SearchRecorder<'_> {
 
 fn prune_reason(value: SearchPruneReason) -> RecordedSearchPruneReason {
     match value {
+        SearchPruneReason::DemandedInput => RecordedSearchPruneReason::DemandedInput,
+        SearchPruneReason::OptimizationDisabled => RecordedSearchPruneReason::OptimizationDisabled,
         SearchPruneReason::HardBudget
         | SearchPruneReason::MutuallyExclusive
         | SearchPruneReason::ReserveUnderflow => feasibility_reason(value),

@@ -1,7 +1,7 @@
+use core::time::Duration;
 use ghostr_delivery::delivery_events::{DecisionHistorySnapshot, DeliveryHandle};
 use ghostr_engine::adaptive::DecisionOutcome;
 use serde::Deserialize;
-use std::time::Duration;
 
 #[derive(Deserialize)]
 struct DecisionEnvelope {

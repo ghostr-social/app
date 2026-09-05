@@ -36,10 +36,6 @@ impl RenditionState {
         &self.advertised == meta
     }
 
-    pub(super) fn advertised_digest(&self) -> Option<&str> {
-        self.advertised.sha256.as_deref()
-    }
-
     pub(super) fn active_bitrate(&self, active: &RepresentationId) -> Option<u64> {
         self.variants
             .iter()
@@ -166,11 +162,6 @@ impl Catalog {
         variants: Vec<VideoRendition>,
     ) -> RepresentationBinding {
         let key = post.clone();
-        let previous_digest = self
-            .entries
-            .get(&key)
-            .and_then(|entry| entry.meta.sha256.clone());
-        let next_digest = meta.sha256.clone();
         let generation = self.allocate_generation();
         match self.entries.get_mut(&key) {
             Some(entry) => entry.refresh(meta, variants, generation),
@@ -181,7 +172,6 @@ impl Catalog {
                 );
             }
         }
-        self.update_digest_claim(&key, previous_digest.as_deref(), next_digest.as_deref());
         self.apply_known_quarantine(&key);
         self.binding(&key).expect("upserted catalog entry")
     }

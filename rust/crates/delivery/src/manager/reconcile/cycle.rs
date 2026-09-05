@@ -45,19 +45,9 @@ impl DeliveryWorker {
         let timeline_window = self.state.timeline_window_posts();
         let timeline_posts: HashSet<_> = timeline_window.iter().cloned().collect();
         let stored = self.collect_stored(&window, &timeline_posts).await;
-        self.downloads.cancel_covered_without_body(
-            &stored.present,
-            &stored.transformed,
-            self.state.catalog(),
-        );
-        self.state
-            .replace_transformed_posts(stored.transformed.clone());
-        self.state.prune_player_preparations(&stored.revisions);
+        self.reconcile_stored_cycle(&stored, &timeline_window);
         let independent_sources = self.independent_objects.current(self.state.catalog());
         let whole_body_exhaustions = self.whole_body_limits.current(self.state.catalog());
-        self.reconcile_timelines(&timeline_window, &stored.snapshots);
-        self.state.reconcile_fast_start_evidence(&stored.snapshots);
-        self.reconcile_probe_bodies();
         let in_flight = self.downloads.actions();
         let active_head_probes = self.probes.active_identities();
         let navigation = self.state.navigation(observed_at_ms);
@@ -88,6 +78,20 @@ impl DeliveryWorker {
             segmented_storage_capacity_bytes,
             demanded,
         }
+    }
+
+    fn reconcile_stored_cycle(&mut self, stored: &PlanningStoreState, timeline_window: &[PostId]) {
+        self.downloads.cancel_covered_without_body(
+            &stored.present,
+            &stored.transformed,
+            self.state.catalog(),
+        );
+        self.state
+            .replace_transformed_posts(stored.transformed.clone());
+        self.state.prune_player_preparations(&stored.revisions);
+        self.reconcile_timelines(timeline_window, &stored.snapshots);
+        self.state.reconcile_fast_start_evidence(&stored.snapshots);
+        self.reconcile_probe_bodies();
     }
 
     pub(super) fn plan_cycle(&mut self, cycle: &PlanningCycle) -> PlannedWork {

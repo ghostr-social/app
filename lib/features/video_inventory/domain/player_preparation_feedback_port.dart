@@ -1,7 +1,7 @@
 import 'package:ghostr/core/media/hls_playback_authority.dart';
 import 'package:ghostr/core/media/playback_asset_authority.dart';
 
-const warpMaximumConcurrentPlayerPreparations = 8;
+const warpMaximumConcurrentPlayerPreparations = 2;
 const warpMaximumConcurrentPlaybackControllers =
     warpMaximumConcurrentPlayerPreparations;
 

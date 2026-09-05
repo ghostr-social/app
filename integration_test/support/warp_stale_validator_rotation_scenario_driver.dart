@@ -21,6 +21,7 @@ final class _WarpValidatorRotationDriver {
     final advance = await _waitForAdvancement(replacement);
     final bytes = await _readReplacementBytes();
     _expectLiveContract(replacement, advance, bytes);
+    await expectWarpRequestBounds(graph.evidence);
     await _teardown();
     _expectQuiescent();
     _report(replacement, advance, bytes);
@@ -52,7 +53,8 @@ final class _WarpValidatorRotationDriver {
     await _swipe(1);
     final replacement = await _waitForFocus(0, afterSequence: cursor);
     await _waitForDecoded(replacement);
-    expect(graph.telemetry.probe.sessionFor(stable), isNull);
+    final probe = graph.telemetry.probe;
+    expect(probe.deactivations, contains(probe.sessionFor(stable)));
     return replacement;
   }
 }

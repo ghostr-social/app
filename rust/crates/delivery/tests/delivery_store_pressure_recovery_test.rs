@@ -25,15 +25,21 @@ async fn admitted_body_recovers_when_capacity_disappears_before_its_write() {
     space.set(0);
     origin.release();
     wait_for_refusal(&harness).await;
-    space.set(16);
+    space.set(32);
     wait_for_complete(&harness).await;
 
-    let retries = origin
-        .requests()
-        .iter()
-        .filter(|range| **range == refused_range)
-        .count();
-    assert_eq!(retries, 2, "the refused range must retry exactly once");
+    let requests = origin.requests();
+    assert_eq!(requests.first(), Some(&refused_range));
+    assert_eq!(
+        requests.last(),
+        Some(&(0, 15)),
+        "same source completes through whole fallback"
+    );
+    assert_eq!(
+        requests.len(),
+        2,
+        "one refused attempt and one successful fallback"
+    );
     assert_eq!(harness.store.refusals(), 1);
     harness.handle.clear().await.expect("valid test fixture");
     drop(harness);
@@ -65,5 +71,10 @@ async fn wait_for_complete(harness: &delivery_fixture::DeliveryHarness) {
         }
     })
     .await
-    .expect("capacity recheck resumes the same source");
+    .unwrap_or_else(|_| {
+        panic!(
+            "capacity recheck resumes source: {:#?}",
+            harness.handle.latest_plan()
+        )
+    });
 }

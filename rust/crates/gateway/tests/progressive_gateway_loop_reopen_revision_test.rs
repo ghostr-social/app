@@ -3,7 +3,7 @@ mod gateway_fixture;
 mod support;
 
 use axum::http::{header::RANGE, StatusCode};
-use std::time::Duration;
+use core::time::Duration;
 
 #[tokio::test]
 async fn used_capability_reopens_after_same_durable_generation_completes() {

@@ -95,7 +95,7 @@ impl DeliveryWorker {
             self.reject_probe_commit(owned);
             return;
         }
-        spawn_probe(
+        let task = spawn_probe(
             self.ctx.clone(),
             ProbeLaunch {
                 post: owned.probe.identity.post().clone(),
@@ -105,6 +105,7 @@ impl DeliveryWorker {
                 profile: owned.probe.profile,
             },
         );
+        self.probes.attach_task(owned.probe.identity.post(), task);
         self.request_immediate_replan();
     }
 

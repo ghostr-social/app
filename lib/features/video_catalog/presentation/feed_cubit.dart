@@ -88,7 +88,12 @@ class FeedCubit extends DisposalSafeCubit<FeedState> {
   final _loads = FeedLoads();
   final _session = FeedSession();
   final _FeedUpdateState _updates;
-  final _readySelector = const FeedReadySelector();
+  late final _readySelector = FeedReadySelector(
+    maxCandidates:
+        _dependencies.optional.delivery.order == FeedDeliveryOrder.semantic
+        ? 1
+        : 3,
+  );
   final _delivery = <PlaybackDeliveryId, VideoDeliverySnapshot>{};
   final _preparation = FeedPreparationReducer();
   int _pageTransition = 0;
@@ -167,19 +172,6 @@ class FeedCubit extends DisposalSafeCubit<FeedState> {
 
   void _reportUpdateError(Object error, StackTrace stackTrace) {
     addError(error, stackTrace);
-  }
-
-  void _watchPersistenceFailed(Object error, StackTrace stackTrace) {
-    if (_isClosing || isClosed) return;
-    _cancelPageTransition();
-    _loads.take();
-    _pageTransition += 1;
-    _emitState(
-      FeedFailure(
-        state.kind,
-        'Watch history is unavailable. Clear it in Settings to continue.',
-      ),
-    );
   }
 
   @override

@@ -14,7 +14,10 @@ impl DeliveryWorker {
         attempt: &ChunkAttempt,
         response: &crate::chunk::downloader::OpenedResponse,
     ) -> anyhow::Result<Option<ResponseAuthorityAdmission>> {
-        if response.evidence().validator.is_none() {
+        if response.evidence().validator.is_none()
+            || response.retention() == ghostr_net::media_retention::MediaRetention::Transient
+            || self.has_other_continuation(attempt.identity()).await
+        {
             self.learn_action_scoped_response(attempt, response, response.evidence().observed);
             let generation = self
                 .state
@@ -54,15 +57,28 @@ impl DeliveryWorker {
         let Some(authority) = self.reject_opened_generation(attempt, response) else {
             return Ok(false);
         };
-        if !self
-            .install_http_authority(attempt.identity(), authority.clone())
-            .await?
+        if !self.has_other_continuation(attempt.identity()).await
+            && !self
+                .install_http_authority(attempt.identity(), authority.clone())
+                .await?
         {
             return Ok(false);
         }
         self.downloads
             .enforce_http_authority(attempt.identity(), &authority);
         Ok(true)
+    }
+
+    pub(super) async fn has_other_continuation(&self, identity: &TransferIdentity) -> bool {
+        self.ctx
+            .store
+            .media_snapshot(identity.post().as_str())
+            .await
+            .is_ok_and(|snapshot| {
+                snapshot
+                    .continuation_source()
+                    .is_some_and(|source| source != identity.source().as_str())
+            })
     }
 
     async fn install_http_authority(

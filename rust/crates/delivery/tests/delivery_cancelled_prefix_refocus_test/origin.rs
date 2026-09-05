@@ -10,10 +10,7 @@ pub(super) async fn next_prefix(origin: &mut ControlledOrigin) -> ActiveRequest 
         let request = tokio::time::timeout_at(deadline, origin.next())
             .await
             .unwrap_or_else(|_| {
-                panic!(
-                    "replacement p6 prefix request starts; observed={:?}",
-                    unrelated
-                )
+                panic!("replacement p6 prefix request starts; observed={unrelated:?}")
             });
         if covers_prefix(&request) {
             return request;

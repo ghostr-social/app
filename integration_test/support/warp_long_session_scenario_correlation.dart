@@ -1,6 +1,6 @@
 part of 'warp_long_session_scenario.dart';
 
-const _cancellationPostIndex = 6;
+const _cancellationPostIndex = _longSessionCancellationWarmup + 1;
 
 typedef _CancellationDecisionBinding = ({
   int actionId,

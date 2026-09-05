@@ -56,13 +56,6 @@ impl HlsSessions {
         Ok(id)
     }
 
-    pub async fn sources(&self, id: &HlsSessionId) -> Option<Vec<Url>> {
-        let now = Instant::now();
-        let mut state = self.state.lock().await;
-        let session = state.active_session(id, now, self.limits.idle_ttl)?;
-        Some(session.sources.clone())
-    }
-
     pub async fn resource(
         &self,
         session: &HlsSessionId,
@@ -156,11 +149,6 @@ impl HlsSessions {
         state.sessions.remove(id).is_some()
     }
 
-    #[cfg(all(
-        feature = "video-debug-web",
-        debug_assertions,
-        not(any(target_os = "android", target_os = "ios"))
-    ))]
     pub(crate) async fn clear(&self) {
         self.state.lock().await.sessions.clear();
     }
@@ -180,3 +168,6 @@ fn resource_path(
         }
     }
 }
+
+#[cfg(any(test, feature = "test"))]
+mod test_support;

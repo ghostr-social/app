@@ -11,11 +11,13 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex as StdMutex};
 use tokio::sync::{Mutex, Notify, RwLock};
 
+mod access_reset;
 mod action;
 mod admission;
 pub mod capacity;
 mod cleanup_debt;
 mod clear;
+mod compiled_index;
 mod discard;
 mod eviction;
 mod finalize;
@@ -27,6 +29,7 @@ pub mod leases;
 mod policy_eviction;
 mod policy_intent;
 mod queries;
+mod reclamation;
 mod reload;
 mod replacement_cleanup;
 mod representation;
@@ -36,10 +39,12 @@ mod sparse_intent;
 #[cfg(any(test, feature = "test"))]
 mod test_support;
 mod transform;
+mod transient;
 mod writes;
 
 pub use action::{ActionReservationExtension, StoreAction};
 pub use admission::OutOfSpace;
+pub use compiled_index::CompiledIndexKey;
 pub use policy_eviction::EvictionOutcome;
 pub use queries::{StoredEvidenceId, StoredMediaSnapshot};
 pub use representation::{ContentRevision, RepresentationRead};
@@ -75,6 +80,7 @@ pub struct PartialRangeStore {
     sparse_response_actions: Mutex<HashMap<u64, generation::SparseResponseState>>,
     single_response_actions: Mutex<HashMap<String, single_response::SingleResponseState>>,
     session_responses: Mutex<HashMap<String, single_response::SessionResponse>>,
+    transient_responses: Mutex<HashMap<String, transient::TransientResponse>>,
     action_reservations: Mutex<action::ActionReservations>,
     cleanup_debts: Mutex<cleanup_debt::CleanupDebts>,
     content_revisions: Mutex<HashMap<String, u64>>,
@@ -108,6 +114,7 @@ impl PartialRangeStore {
             sparse_response_actions: Mutex::new(HashMap::new()),
             single_response_actions: Mutex::new(HashMap::new()),
             session_responses: Mutex::new(HashMap::new()),
+            transient_responses: Mutex::new(HashMap::new()),
             action_reservations: Mutex::new(HashMap::new()),
             cleanup_debts: Mutex::new(cleanup_debt::CleanupDebts::new()),
             content_revisions: Mutex::new(HashMap::new()),

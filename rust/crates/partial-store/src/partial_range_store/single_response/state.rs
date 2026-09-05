@@ -35,6 +35,7 @@ pub(in crate::partial_range_store) enum ResponseOwnerRef<'a> {
 
 #[derive(Clone, Copy)]
 pub(in crate::partial_range_store) enum SingleResponseStorage {
+    Memory,
     Live { started: bool },
     Staged { received: u64 },
 }

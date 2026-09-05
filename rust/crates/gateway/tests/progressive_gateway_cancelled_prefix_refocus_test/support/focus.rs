@@ -1,6 +1,6 @@
 use crate::gateway_fixture::progressive_delivery::ProgressiveDeliveryHarness;
+use core::time::Duration;
 use ghostr_delivery::delivery_events::{DeliveryFocus, FocusAdmission, FocusGeneration, FocusItem};
-use std::time::Duration;
 
 const RETAINED_PREVIOUS: usize = 3;
 
@@ -15,7 +15,8 @@ pub async fn focus_and_wait(
     focus.generation = FocusGeneration::try_new(generation).expect("generation");
     assert_eq!(
         harness.delivery.handle.update_focus(focus),
-        FocusAdmission::Accepted
+        FocusAdmission::Accepted,
+        "focus generation is accepted"
     );
     let observed = tokio::time::timeout(Duration::from_secs(30), async {
         loop {
@@ -30,14 +31,13 @@ pub async fn focus_and_wait(
         }
     })
     .await;
-    if observed.is_err() {
-        panic!(
-            "absent causal focus plan: expected generation={generation}, current={expected:?}; \
+    assert!(
+        observed.is_ok(),
+        "absent causal focus plan: expected generation={generation}, current={expected:?}; \
              demands={:#?}; latest_plan={:#?}",
-            harness.delivery.demands(),
-            harness.delivery.handle.latest_plan(),
-        );
-    }
+        harness.delivery.demands(),
+        harness.delivery.handle.latest_plan(),
+    );
 }
 
 pub async fn focus_trimmed_and_wait(

@@ -14,7 +14,7 @@ use priced_transform_fixture::PricedRemux;
 use std::sync::Arc;
 
 #[tokio::test]
-async fn measured_transform_changes_later_cpu_price_and_records_resources() {
+async fn measured_transform_records_resources_without_enabling_core_cpu_prices() {
     let harness =
         priced_transform_delivery_fixture::start("warp-transform-cpu-price", Arc::new(PricedRemux))
             .await;
@@ -37,16 +37,16 @@ async fn measured_transform_changes_later_cpu_price_and_records_resources() {
     let later = history
         .records
         .iter()
-        .find(|record| later_cpu_price(record, terminal.sequence))
+        .find(|record| later_core_decision(record, terminal.sequence))
         .expect("valid test fixture");
-    assert!(
+    assert_eq!(
         later
             .warp_decision
             .as_ref()
             .expect("valid test fixture")
             .prices
-            .cpu_micros
-            > 0
+            .cpu_micros,
+        0
     );
     harness.handle.clear().await.expect("valid test fixture");
     std::fs::remove_dir_all(&harness.root).ok();
@@ -61,7 +61,7 @@ fn evidence_ready(history: &DecisionHistorySnapshot) -> bool {
             history
                 .records
                 .iter()
-                .any(|record| later_cpu_price(record, terminal.sequence))
+                .any(|record| later_core_decision(record, terminal.sequence))
         })
 }
 
@@ -77,10 +77,10 @@ fn transform(record: &DecisionRecord) -> bool {
         )
 }
 
-fn later_cpu_price(record: &DecisionRecord, sequence: u64) -> bool {
+fn later_core_decision(record: &DecisionRecord, sequence: u64) -> bool {
     record.sequence > sequence
         && record
             .warp_decision
             .as_ref()
-            .is_some_and(|warp| warp.prices.cpu_micros > 0)
+            .is_some_and(|warp| warp.prices.cpu_micros == 0)
 }

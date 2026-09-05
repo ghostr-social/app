@@ -108,6 +108,7 @@ pub struct OpenedResponse {
     generation: Option<SourceGeneration>,
     mode: ResponseWriteMode,
     evidence: HttpResponseEvidence,
+    retention: ghostr_net::media_retention::MediaRetention,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -144,7 +145,20 @@ impl OpenedResponse {
             generation,
             mode,
             evidence,
+            retention: ghostr_net::media_retention::MediaRetention::Partitioned,
         }
+    }
+
+    pub(crate) fn with_retention(
+        mut self,
+        retention: ghostr_net::media_retention::MediaRetention,
+    ) -> Self {
+        self.retention = retention;
+        self
+    }
+
+    pub(crate) fn retention(&self) -> ghostr_net::media_retention::MediaRetention {
+        self.retention
     }
 
     pub fn observation(&self) -> ResponseObservation {

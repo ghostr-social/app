@@ -91,10 +91,7 @@ fn decision(scenario: Scenario) -> crate::adaptive::WarpPlanningDecision {
             price_snapshot: None,
         });
     }
-    WarpPlanner::default().plan(WarpPlannerInput::new(
-        &input,
-        &base,
-        &OriginModel::default(),
-        &context,
-    ))
+    WarpPlanner::new(crate::adaptive::WarpPlannerConfig::default().with_lookahead()).plan(
+        WarpPlannerInput::new(&input, &base, &OriginModel::default(), &context),
+    )
 }

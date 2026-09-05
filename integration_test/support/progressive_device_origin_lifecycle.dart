@@ -30,12 +30,30 @@ extension ProgressiveDeviceOriginLifecycle on ProgressiveDeviceOrigin {
       return _rejectUnavailable(request.response, entry);
     }
     if (request.method == 'HEAD') {
-      entry._blockHead();
-      _heldHeads.add(request.response);
-      return;
+      return _holdHead(request.response, entry);
     }
     final completed = await _write(request.response, range, entry);
     if (completed) _completed.add(entry);
+  }
+
+  Future<void> _holdHead(
+    HttpResponse response,
+    ProgressiveOriginRequest entry,
+  ) async {
+    final socket = await response.detachSocket(writeHeaders: false);
+    entry._blockHead();
+    _heldHeads.add(socket);
+    void closed() {
+      if (!_heldHeads.remove(socket)) return;
+      _peerClosed(entry);
+      entry._finish(
+        ProgressiveOriginRequestOutcome.clientCanceled,
+        _clock.elapsed,
+      );
+      socket.destroy();
+    }
+
+    socket.listen((_) {}, onDone: closed, onError: (Object _) => closed());
   }
 
   Future<void> _rejectUnavailable(
@@ -62,9 +80,10 @@ extension ProgressiveDeviceOriginLifecycle on ProgressiveDeviceOrigin {
     _bandwidthTrigger?.cancel();
     _chunkGate?.release();
     _preBodyGate?.release();
-    for (final response in _heldHeads) {
-      await response.close();
+    for (final socket in _heldHeads.toList()) {
+      socket.destroy();
     }
+    _heldHeads.clear();
     await _subscription.cancel();
     await _server.close(force: true);
   }

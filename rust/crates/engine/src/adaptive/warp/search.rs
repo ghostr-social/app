@@ -56,6 +56,10 @@ pub struct WarpSearch {
 }
 
 impl WarpSearch {
+    pub(super) fn choose_core(&self, nodes: &[ActionNode], budget: &HardBudget) -> SearchDecision {
+        self.greedy(nodes, budget, SearchPruneReason::OptimizationDisabled)
+    }
+
     pub(crate) const fn new(config: BeamConfig) -> Self {
         Self {
             config,

@@ -18,8 +18,14 @@ impl Scenario {
             1,
             "only the leased Full may be selected"
         );
-        assert!(history.records.iter().any(bound_capped_full));
-        assert!(history.records.iter().any(bound_range));
+        assert!(
+            history.records.iter().any(bound_capped_full),
+            "full fallback owns its lease"
+        );
+        assert!(
+            history.records.iter().any(bound_range),
+            "bounded range owns its lease"
+        );
     }
 
     pub(super) fn assert_trial_lease(&self) {

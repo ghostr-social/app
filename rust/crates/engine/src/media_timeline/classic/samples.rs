@@ -7,6 +7,7 @@ pub(super) fn map_samples(
     tables: &TrackTables,
     budget: &mut ParserBudget<'_>,
     output: &mut Vec<TimedRange>,
+    track: u16,
 ) -> Result<(), TimelineError> {
     validate_chunks(tables, budget)?;
     budget.reserve(output, tables.sizes.len())?;
@@ -21,13 +22,17 @@ pub(super) fn map_samples(
             budget.work(1)?;
             let size = *tables.sizes.get(sample).ok_or(TimelineError::Malformed)?;
             let duration = tables.durations[sample];
-            output.push(timed(SampleTiming {
+            let mut mapped = timed(SampleTiming {
                 offset: byte_offset,
                 size,
-                start: media_time,
+                start: i128::from(media_time) + i128::from(tables.dependencies.offset(sample)),
                 duration,
                 timescale: tables.timescale,
-            })?);
+            })?;
+            mapped.track = track;
+            mapped.decode_start = Some(media_time);
+            mapped.sync_sample = tables.dependencies.sync_before(sample);
+            output.push(mapped);
             byte_offset = byte_offset
                 .checked_add(u64::from(size))
                 .ok_or(TimelineError::Malformed)?;
@@ -80,7 +85,7 @@ impl<'a> ChunkRuleCursor<'a> {
 struct SampleTiming {
     offset: u64,
     size: u32,
-    start: u64,
+    start: i128,
     duration: u32,
     timescale: u32,
 }
@@ -91,15 +96,17 @@ fn timed(input: SampleTiming) -> Result<TimedRange, TimelineError> {
     }
     let end = input
         .start
-        .checked_add(u64::from(input.duration))
+        .checked_add(i128::from(input.duration))
         .ok_or(TimelineError::Malformed)?;
     let byte_end = input
         .offset
         .checked_add(u64::from(input.size))
         .ok_or(TimelineError::Malformed)?;
     Ok(TimedRange {
-        start_ms: scale_floor(input.start, input.timescale),
-        end_ms: scale_ceil(end, input.timescale),
+        decode_start: None,
+        time: super::super::timing::PresentationTime::new(input.start, end, input.timescale)?,
+        track: 0,
+        sync_sample: None,
         bytes: ByteRange::new(input.offset, byte_end),
     })
 }
@@ -121,15 +128,4 @@ fn validate_chunks(
         }
     }
     Ok(())
-}
-
-pub(crate) fn scale_floor(value: u64, timescale: u32) -> u64 {
-    value.saturating_mul(1_000) / u64::from(timescale)
-}
-
-pub(crate) fn scale_ceil(value: u64, timescale: u32) -> u64 {
-    value
-        .saturating_mul(1_000)
-        .saturating_add(u64::from(timescale) - 1)
-        / u64::from(timescale)
 }

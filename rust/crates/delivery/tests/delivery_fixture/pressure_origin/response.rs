@@ -25,7 +25,11 @@ pub(super) async fn response(
         state.release.notified().await;
     }
     reply(
-        StatusCode::PARTIAL_CONTENT,
+        if headers.contains_key(header::RANGE) {
+            StatusCode::PARTIAL_CONTENT
+        } else {
+            StatusCode::OK
+        },
         start,
         end,
         Body::from(MEDIA[start..=end].to_vec()),
@@ -33,7 +37,10 @@ pub(super) async fn response(
 }
 
 fn requested(headers: &HeaderMap) -> (usize, usize) {
-    let range = headers[header::RANGE].to_str().expect("range header");
+    let Some(range) = headers.get(header::RANGE) else {
+        return (0, MEDIA.len() - 1);
+    };
+    let range = range.to_str().expect("range header");
     let (start, end) = range
         .trim_start_matches("bytes=")
         .split_once('-')
@@ -46,6 +53,7 @@ fn requested(headers: &HeaderMap) -> (usize, usize) {
 fn reply(status: StatusCode, start: usize, end: usize, body: Body) -> Response {
     let mut builder = Response::builder()
         .status(status)
+        .header(header::CACHE_CONTROL, "public, max-age=3600")
         .header(header::CONTENT_TYPE, "video/mp4")
         .header(header::ACCEPT_RANGES, "bytes")
         .header(header::ETAG, "\"fixture-pressure\"")

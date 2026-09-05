@@ -67,7 +67,9 @@ Future<void> _loadMixedFeed(
   unawaited(runtime.graph.cubit.load());
   await _waitUntil(tester, runtime, () {
     final state = runtime.graph.cubit.state;
-    return state is FeedLoaded && state.posts.length == 3;
+    return state is FeedLoaded &&
+        state.posts.length == 3 &&
+        find.text('WARP signed current').evaluate().isNotEmpty;
   });
   expect(find.text('WARP signed current'), findsOneWidget);
 }

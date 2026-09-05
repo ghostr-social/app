@@ -15,6 +15,15 @@ impl WarpPlanner {
         input: &WarpPlannerInput<'_>,
         feasible: &feasibility::FeasibleActions,
     ) -> (SearchDecision, SearchReplayInput) {
+        if let Some(demanded) = super::demand::constrain(input, feasible) {
+            let search = least_risk::choose_with_reason(
+                &demanded.nodes,
+                &[],
+                crate::adaptive::SearchPruneReason::DemandedInput,
+            );
+            let replay = self.replay_input(&demanded, &search, Vec::new(), Vec::new());
+            return (search, replay);
+        }
         let progress =
             if self.config.reserve_progress_policy == ReserveProgressPolicy::OrderedReadiness {
                 reserve_progress::action_ids(input.snapshot, input.base, &feasible.nodes)
@@ -25,6 +34,12 @@ impl WarpPlanner {
             let preferred = protected_progress_ids(&feasible.reserve, progress);
             let search = least_risk::choose(&feasible.nodes, &preferred);
             let replay = self.replay_input(feasible, &search, Vec::new(), preferred);
+            return (search, replay);
+        }
+        if self.config.profile == super::PlannerProfile::Core3 {
+            let search =
+                WarpSearch::new(self.config.beam).choose_core(&feasible.nodes, &feasible.budget);
+            let replay = self.replay_input(feasible, &search, Vec::new(), Vec::new());
             return (search, replay);
         }
         self.search_priced(input, feasible)

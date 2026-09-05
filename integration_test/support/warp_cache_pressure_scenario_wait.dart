@@ -38,7 +38,10 @@ extension _WarpCachePressureWait on _WarpCachePressureDriver {
     while (!condition() && watch.elapsed < limit) {
       await _tick();
     }
-    if (!condition()) fail(_timeoutEvidence(limit));
+    if (!condition()) {
+      await _reportFailure();
+      fail(_timeoutEvidence(limit));
+    }
   }
 
   Future<void> _waitAsync(Future<bool> Function() condition) async {

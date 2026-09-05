@@ -10,7 +10,9 @@ use tokio::net::TcpStream;
 #[tokio::test]
 async fn fragmented_range_request_does_not_signal_whole_body_recovery() {
     let mut origin = serve().await;
-    let mut socket = TcpStream::connect(address(origin.url())).await.unwrap();
+    let mut socket = TcpStream::connect(address(origin.url()))
+        .await
+        .expect("TCP origin fixture");
     write_fragmented_range(&mut socket).await;
 
     let signalled =
@@ -31,11 +33,11 @@ async fn write_fragmented_range(socket: &mut TcpStream) {
     let mut first = b"GET /video.mp4 HTTP/1.1\r\nHost: localhost\r\nX-Pad: ".to_vec();
     first.resize(first.len() + 4_096, b'a');
     first.extend_from_slice(b"\r\n");
-    socket.write_all(&first).await.unwrap();
+    socket.write_all(&first).await.expect("TCP origin fixture");
     socket
         .write_all(b"range: bytes=0-7\r\nConnection: close\r\n\r\n")
         .await
-        .unwrap();
+        .expect("TCP origin fixture");
 }
 
 async fn read_response(socket: &mut TcpStream) -> Vec<u8> {

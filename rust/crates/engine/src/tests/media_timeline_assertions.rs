@@ -5,7 +5,7 @@ pub(super) fn duration_ms(timeline: &MediaTimeline) -> u64 {
     timeline
         .media
         .iter()
-        .map(|range| range.end_ms)
+        .map(|range| range.time.end_ms())
         .max()
         .unwrap_or(0)
 }
@@ -16,7 +16,7 @@ pub(super) fn media_ranges(timeline: &MediaTimeline, start_ms: u64, end_ms: u64)
         timeline
             .media
             .iter()
-            .filter(|range| range.start_ms < end_ms && range.end_ms > start_ms)
+            .filter(|range| range.time.start_ms() < end_ms && range.time.end_ms() > start_ms)
             .map(|range| range.bytes)
             .collect(),
     )

@@ -50,13 +50,3 @@ pub async fn next_request(
         .await
         .unwrap_or_else(|_| panic!("{label} request starts; latest={:#?}", handle.latest_plan()))
 }
-
-pub async fn wait_cancelled(request: &ActiveRequest) {
-    tokio::time::timeout(Duration::from_secs(5), async {
-        while request.is_open() {
-            tokio::task::yield_now().await;
-        }
-    })
-    .await
-    .expect("far handoff cancels");
-}

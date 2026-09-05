@@ -7,6 +7,14 @@ use std::collections::BTreeSet;
 mod dependency_test;
 
 pub(super) fn choose(nodes: &[ActionNode], preferred: &[u16]) -> SearchDecision {
+    choose_with_reason(nodes, preferred, SearchPruneReason::ReserveUnderflow)
+}
+
+pub(super) fn choose_with_reason(
+    nodes: &[ActionNode],
+    preferred: &[u16],
+    reason: SearchPruneReason,
+) -> SearchDecision {
     let action = select(nodes, preferred);
     let chosen_plan = action.as_ref().map(plan);
     SearchDecision {
@@ -17,7 +25,7 @@ pub(super) fn choose(nodes: &[ActionNode], preferred: &[u16]) -> SearchDecision 
         retained_plans: chosen_plan.into_iter().collect(),
         pruned_plans: vec![PrunedSearchPlan {
             action_ids: Vec::new(),
-            reason: SearchPruneReason::ReserveUnderflow,
+            reason,
         }],
         pruned_plan_events_total: 1,
         pruned_plan_sample_truncated: false,

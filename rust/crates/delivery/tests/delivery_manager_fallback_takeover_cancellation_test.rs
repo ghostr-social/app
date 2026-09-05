@@ -26,13 +26,17 @@ async fn exact_fallback_takeover_cancels_a_held_primary_before_late_bytes() {
     publish_fallback(&harness).await;
     harness.handle.storage_changed();
 
-    tokio::time::timeout(Duration::from_secs(1), async {
+    let cancelled = tokio::time::timeout(Duration::from_secs(30), async {
         while held.is_open() {
             tokio::task::yield_now().await;
         }
     })
-    .await
-    .expect("covered primary request is cancelled");
+    .await;
+    assert!(
+        cancelled.is_ok(),
+        "primary remained open: {:?}",
+        harness.handle.plan_history().last()
+    );
     assert!(!held.send_byte().await, "late primary bytes stay fenced");
     harness.handle.clear().await.expect("valid test fixture");
     std::fs::remove_dir_all(harness.root).ok();

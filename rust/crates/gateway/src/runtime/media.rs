@@ -11,6 +11,9 @@ use ghostr_net::media_request_executor::{MediaRequestExecutor, MediaRequestLimit
 use ghostr_net::outbound_media_client::{MediaHttpClient, MediaHttpRequests};
 use std::sync::Arc;
 
+#[cfg(test)]
+mod allowance_restart_test;
+
 pub(super) fn client(
     configuration: &GatewayConfiguration,
 ) -> anyhow::Result<Arc<dyn MediaHttpRequests>> {
@@ -37,7 +40,15 @@ pub(super) fn debug_client() -> anyhow::Result<Arc<dyn MediaHttpRequests>> {
 pub(super) fn executor(
     client: Arc<dyn MediaHttpRequests>,
     maximum: usize,
+    directory: &std::path::Path,
+    data_limit: ghostr_net::internet_allowance::InternetDataLimit,
 ) -> anyhow::Result<MediaRequestExecutor> {
     let limits = MediaRequestLimits::try_new(maximum, maximum)?;
-    Ok(MediaRequestExecutor::new(client, limits))
+    let allowance = ghostr_net::internet_allowance::InternetAllowance::open(
+        &directory.join("internet-allowance"),
+        data_limit,
+    )?;
+    Ok(MediaRequestExecutor::with_allowance(
+        client, limits, allowance,
+    ))
 }

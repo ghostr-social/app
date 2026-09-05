@@ -29,8 +29,8 @@ pub(super) fn execute(
     stats.record_overall_throughput(sample);
     stats.record_host_throughput("media.example", sample);
     plan(
-        scenario,
-        RunContext {
+        &scenario,
+        &RunContext {
             retry,
             measurements,
             options,
@@ -39,7 +39,7 @@ pub(super) fn execute(
     )
 }
 
-fn plan(scenario: PlanScenario<'_>, context: RunContext<'_>) -> PlannedWork {
+fn plan(scenario: &PlanScenario<'_>, context: &RunContext<'_>) -> PlannedWork {
     let connection_ceiling = scenario.state.concurrency();
     let demanded = HashMap::new();
     let stored_totals = HashMap::new();

@@ -8,6 +8,7 @@ use tokio::net::TcpListener;
 use tokio::sync::oneshot;
 use tokio::task::JoinHandle;
 
+mod body_request;
 mod gated_response;
 mod split_response;
 
@@ -96,14 +97,4 @@ pub async fn spawn_response_sequence(responses: Vec<&'static [u8]>) -> (String, 
         }
     });
     (format!("http://{address}/video.mp4"), requests)
-}
-
-pub(super) async fn answer_once(listener: &TcpListener, response: &[u8]) {
-    let (mut socket, _) = listener.accept().await.expect("request");
-    let mut request = vec![0; 4096];
-    assert!(
-        socket.read(&mut request).await.expect("read request") > 0,
-        "the client must send a request"
-    );
-    socket.write_all(response).await.expect("write response");
 }

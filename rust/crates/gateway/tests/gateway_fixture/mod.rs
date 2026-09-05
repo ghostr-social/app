@@ -80,7 +80,7 @@ pub fn cache_video(id: impl Into<String>, meta: VideoMeta) -> CacheVideo {
 }
 
 pub fn progressive_startup() -> ghostr_engine::media_timeline::StartupFootprint {
-    let bytes = progressive_fixture_bytes();
+    let bytes = progressive_journey_origin::fixture::supported_mp4();
     ghostr_engine::media_timeline::parse_mp4_segments(&[
         ghostr_engine::media_timeline::MediaSegment::new(0, &bytes),
     ])

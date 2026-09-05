@@ -51,7 +51,7 @@ impl SnapshotCapture {
         storage: Option<SingleResponseStorage>,
     ) -> Vec<Range<u64>> {
         match storage {
-            Some(SingleResponseStorage::Live { .. }) => Vec::new(),
+            Some(SingleResponseStorage::Live { .. } | SingleResponseStorage::Memory) => Vec::new(),
             _ => self.stable_ranges.clone(),
         }
     }

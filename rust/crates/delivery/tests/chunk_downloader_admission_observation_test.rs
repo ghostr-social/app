@@ -5,7 +5,7 @@ use core::time::Duration;
 
 #[tokio::test]
 async fn local_admission_wait_is_not_trained_as_origin_time_or_concurrency() {
-    let observation = observation_fixture::observe().await;
+    let observation = Box::pin(observation_fixture::observe()).await;
 
     assert_eq!(observation.concurrency, 2);
     assert_eq!(observation.throughput_samples, 1);

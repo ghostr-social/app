@@ -2,8 +2,8 @@ part of 'warp_feed_playback_journey.dart';
 
 extension _WarpPairDiagnostics on _WarpPairWait {
   Future<void> _reportPairDiagnostics() async {
-    final decisions = await journey.evidence.decisions();
-    for (final decision in decisions.records) {
+    final decisions = await journey.sampleDecisions();
+    for (final decision in decisions) {
       if (decision.sequence <= query.afterSequence) continue;
       final plans = _plans
           .where((plan) {

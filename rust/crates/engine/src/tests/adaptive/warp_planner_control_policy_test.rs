@@ -16,7 +16,7 @@ fn continuation_hysteresis_has_distinct_continue_pause_and_abort_regions() {
 }
 
 #[test]
-fn delayed_range_hedge_requires_tail_delay_value_and_verified_identity() {
+fn an_old_complete_digest_does_not_authenticate_new_cross_origin_ranges() {
     let input = HedgeInput::new(
         ActionId::new(7),
         ActionKind::FetchRange(ByteRange::new(0, 65_536)),
@@ -24,7 +24,7 @@ fn delayed_range_hedge_requires_tail_delay_value_and_verified_identity() {
     .with_timing(1_000, 900)
     .with_value(5_000, 1_000);
     assert!(!HedgePolicy::eligible(&input, IdentityProof::Unverified));
-    assert!(HedgePolicy::eligible(
+    assert!(!HedgePolicy::eligible(
         &input,
         IdentityProof::VerifiedHash([9; 32])
     ));

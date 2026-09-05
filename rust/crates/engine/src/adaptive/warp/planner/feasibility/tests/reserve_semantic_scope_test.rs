@@ -9,9 +9,9 @@ use crate::{ByteRange, PostId};
 
 #[test]
 fn reserve_rescue_does_not_broaden_ordinary_semantic_admission() {
-    let mut input = snapshot(7, 2_500_000, 20_000, 120);
+    let mut input = snapshot(4, 2_500_000, 20_000, 120);
     input.candidates[0].present = vec![ByteRange::new(0, 3_750_000)];
-    for candidate in &mut input.candidates[1..=4] {
+    for candidate in &mut input.candidates[1..=1] {
         candidate.present = candidate
             .startup
             .as_ref()
@@ -19,23 +19,23 @@ fn reserve_rescue_does_not_broaden_ordinary_semantic_admission() {
             .ranges()
             .to_vec();
     }
-    for candidate in &mut input.candidates[5..] {
+    for candidate in &mut input.candidates[2..] {
         candidate.player_preparation = PlayerPreparation::Unverified;
     }
     let base = AdaptivePlayabilityPolicy.plan(&input);
 
-    let decisions = decide(&input, &base, 5);
-    let target = admission(&decisions, "p5");
+    let decisions = decide(&input, &base, 2);
+    let target = admission(&decisions, "p2");
     assert!(target.admissible && target.rescue);
-    assert!(!admission(&decisions, "p6").admissible);
+    assert!(!admission(&decisions, "p3").admissible);
 
-    let normal_target = admission(&decide(&input, &base, 6), "p5");
+    let normal_target = admission(&decide(&input, &base, 3), "p2");
     assert!(normal_target.admissible && !normal_target.rescue);
     let normal = crate::adaptive::AllocationPlan {
         mode: ControlMode::Normal,
         ..base
     };
-    assert!(!admission(&decide(&input, &normal, 5), "p5").admissible);
+    assert!(!admission(&decide(&input, &normal, 2), "p2").admissible);
 }
 
 fn decide(

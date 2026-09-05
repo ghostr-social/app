@@ -19,6 +19,7 @@ import 'device_qoe_targets.dart';
 import 'progressive_device_origin.dart';
 import 'progressive_device_resources.dart';
 import 'progressive_device_telemetry.dart';
+import 'warp_decision_ledger.dart';
 import 'warp_evidence_reader.dart';
 import 'warp_evidence_models.dart';
 import 'warp_feed_delivery_probe.dart';
@@ -71,6 +72,7 @@ final class WarpFeedPlaybackJourney {
 
   final WarpFeedDeviceRuntime runtime;
   final playbackErrorSamples = <Duration>[];
+  final decisionLedger = WarpDecisionLedger();
   ProgressiveDeviceResources get resources => runtime.resources;
   WarpFeedRelay get relay => runtime.relay;
   List<Nip01Event> get events => runtime.events;

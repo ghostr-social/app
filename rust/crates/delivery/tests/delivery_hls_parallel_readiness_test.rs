@@ -48,5 +48,9 @@ async fn focused_hls_videos_prepare_in_parallel_and_require_bootstrap_assets() {
 
 async fn wait_ready(harness: &delivery_fixture::DeliveryHarness, post: &str) {
     let terminal = hls_terminal_wait::wait_terminal(&harness.segmented, post).await;
-    assert_eq!(terminal.phase, SegmentedPhase::Ready);
+    assert_eq!(
+        terminal.phase,
+        SegmentedPhase::Ready,
+        "all selected HLS dependencies become ready"
+    );
 }

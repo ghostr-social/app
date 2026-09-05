@@ -1,11 +1,11 @@
-//! A cold speculative large-range intent is attributed to the exact
-//! sparse request that origin admission authorizes and the worker executes.
+//! CORE attributes the bounded encoded-window intent to its actual request.
 
 #[path = "delivery_warp_executed_request_attribution_test/assertions.rs"]
 mod assertions;
 mod delivery_fixture;
 
 use assertions::{assert_executed_cap, assert_selected_intent};
+use delivery_fixture::evidence::DeliveryEvidence as _;
 use delivery_fixture::items::{focus_now, seed_range, sized_item};
 use delivery_fixture::media::{hit_log, hits, serve_recording};
 use delivery_fixture::options::DeliveryOptions;
@@ -16,7 +16,7 @@ const TOTAL: u64 = 128 * 1024;
 const ADMITTED: u64 = 64 * 1024;
 
 #[tokio::test]
-async fn cold_speculative_intent_records_the_executed_sparse_cap() {
+async fn core_encoded_window_records_the_selected_and_executed_sparse_cap() {
     let log = hit_log();
     let origin = serve_recording(
         "speculative",
@@ -39,7 +39,17 @@ async fn cold_speculative_intent_records_the_executed_sparse_cap() {
         0,
         0,
     ));
-    let record = delivery_fixture::decision::wait_for_terminal_transfer(&harness.handle).await;
+    delivery_fixture::decision::wait_for_history(&harness.handle, |history| {
+        history.records.iter().any(completed_prefix)
+    })
+    .await;
+    let record = harness
+        .handle
+        .decision_history()
+        .records
+        .into_iter()
+        .find(completed_prefix)
+        .expect("completed encoded prefix");
     assert_selected_intent(&record);
     assert_executed_cap(&record);
     assert!(matches!(
@@ -70,4 +80,14 @@ fn options() -> DeliveryOptions {
     let mut options = DeliveryOptions::default();
     options.params.chunk_bytes = TOTAL;
     options
+}
+
+fn completed_prefix(record: &ghostr_engine::adaptive::DecisionRecord) -> bool {
+    matches!(
+        record.eventual_outcome,
+        DecisionOutcome::Succeeded {
+            bytes: ADMITTED,
+            ..
+        }
+    )
 }

@@ -31,7 +31,7 @@ fn parsed_timeline_is_installed_for_the_matching_representation() {
     let timeline =
         parse_mp4_segments(&[MediaSegment::new(10_000, &moov)]).expect("valid test fixture");
 
-    assert!(install_timeline(&mut state, &binding, timeline));
+    assert!(install_timeline(&mut state, &binding, timeline, None));
     assert!(state
         .catalog()
         .lookup(&post)

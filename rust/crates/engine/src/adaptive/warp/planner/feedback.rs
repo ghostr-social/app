@@ -2,6 +2,9 @@ use super::{WarpPlanner, WarpPlannerInput};
 use crate::adaptive::ResourceFeedback;
 
 pub(super) fn observe(planner: &mut WarpPlanner, input: &WarpPlannerInput<'_>) {
+    if planner.config.profile == super::PlannerProfile::Core3 {
+        return;
+    }
     let before = planner.prices.prices();
     if let Some(current) = input
         .context

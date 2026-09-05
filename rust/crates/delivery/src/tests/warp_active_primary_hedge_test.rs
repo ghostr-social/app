@@ -1,8 +1,8 @@
-use crate::tests::warp_hedge_plan_fixture::{mirror_plan, HedgeCase, ALTERNATE};
+use crate::tests::warp_hedge_plan_fixture::{mirror_plan, HedgeCase};
 use ghostr_engine::adaptive::PlannerCommand;
 
 #[test]
-fn blocked_but_active_primary_can_still_launch_an_available_alternate() {
+fn a_blocked_primary_does_not_authorize_unauthenticated_alternate_ranges() {
     let decision = mirror_plan(HedgeCase::PrimaryUnavailable)
         .warp
         .expect("advanced decision");
@@ -13,5 +13,5 @@ fn blocked_but_active_primary_can_still_launch_an_available_alternate() {
         Some(transfer)
     });
 
-    assert_eq!(hedge.expect("tail hedge").source, ALTERNATE);
+    assert!(hedge.is_none());
 }

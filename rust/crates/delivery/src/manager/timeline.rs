@@ -54,7 +54,7 @@ impl DeliveryWorker {
         let evidence = binding
             .as_ref()
             .zip(snapshot)
-            .and_then(|(binding, snapshot)| TimelineEvidence::from_snapshot(binding, snapshot));
+            .and_then(|(binding, snapshot)| self.timelines.evidence(binding, snapshot));
         let Some(evidence) = evidence else {
             self.invalidate_timeline(post, binding.as_ref());
             return;
@@ -86,11 +86,15 @@ pub(crate) fn install_timeline(
     state: &mut DeliveryState,
     binding: &RepresentationBinding,
     timeline: MediaTimeline,
+    source: Option<ghostr_engine::representation::TransferIdentity>,
 ) -> bool {
     state.catalog_mut().learn_timeline_observation_for(
         binding,
-        timeline,
-        crate::manager::time::unix_time_ms(),
+        ghostr_engine::catalog::TimelineObservation {
+            timeline,
+            source,
+            observed_at_ms: crate::manager::time::unix_time_ms(),
+        },
     )
 }
 

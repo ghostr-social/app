@@ -1,13 +1,28 @@
 //! Executes exact storage ranges selected by the adaptive policy.
 
+use crate::manager::plan::PlannedWork;
 use crate::manager::DeliveryWorker;
 use core::ops::Range;
-use ghostr_engine::adaptive::Eviction;
+use ghostr_engine::adaptive::{AdaptivePlayabilityPolicy, Eviction};
 use ghostr_engine::PostId;
 use ghostr_partial_store::partial_range_store::ContentRevision;
 use std::collections::{BTreeMap, HashMap};
 
 impl DeliveryWorker {
+    pub(super) async fn reclaim_cold_storage(&self, planned: &PlannedWork) -> bool {
+        let Some(snapshot) = &planned.snapshot else {
+            return false;
+        };
+        let wanted = AdaptivePlayabilityPolicy.current_start_storage_bytes(snapshot);
+        let working_set = self
+            .state
+            .window_posts()
+            .into_iter()
+            .map(|post| post.0)
+            .collect();
+        self.ctx.store.reclaim_outside(&working_set, wanted).await > 0
+    }
+
     pub(super) async fn apply_policy_evictions(
         &mut self,
         evictions: &[Eviction],

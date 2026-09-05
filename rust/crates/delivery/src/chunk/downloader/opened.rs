@@ -25,7 +25,7 @@ pub(super) struct OpenedResponse {
 }
 
 pub(super) enum Opened {
-    Response(OpenedResponse),
+    Response(Box<OpenedResponse>),
     CancelledBeforeRequest,
     CancelledAfterRequest,
 }
@@ -47,6 +47,11 @@ fn request(spec: &ChunkSpec<'_>) -> Result<MediaRequest> {
     let mut request = spec
         .requests
         .get(spec.url, spec.priority)?
+        .body_limit(
+            spec.request
+                .reserved_network_bytes()
+                .saturating_add(512 * 1024),
+        )
         .header(ACCEPT_ENCODING, HeaderValue::from_static("identity"));
     if let RetrievalRequest::FetchRange { bytes, .. } = spec.request {
         let range = format!("bytes={}-{}", bytes.start, bytes.end - 1);
@@ -113,7 +118,10 @@ async fn open(
         .context(super::ResponseFailure::InvalidResponse)?;
     let response = accept_status(response, observed, traffic)?;
     accept_encoding(&response, observed, traffic)?;
-    Ok(Opened::Response(OpenedResponse { response, observed }))
+    Ok(Opened::Response(Box::new(OpenedResponse {
+        response,
+        observed,
+    })))
 }
 
 fn accept_status(

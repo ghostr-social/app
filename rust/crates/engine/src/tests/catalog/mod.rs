@@ -3,6 +3,7 @@ mod catalog_deliverable_identity_test;
 mod catalog_evidence_precedence_test;
 mod catalog_facts_merge_test;
 mod catalog_legacy_evidence_decay_test;
+mod catalog_mismatch_provenance_test;
 mod catalog_range_support_decay_test;
 mod catalog_rendition_claim_restart_test;
 mod catalog_rendition_integrity_test;
@@ -17,3 +18,5 @@ mod post_identity_test;
 mod representation_identity_fence_test;
 mod representation_identity_vector_test;
 mod transformed_representation_identity_test;
+
+mod catalog_parser_source_scope_test;

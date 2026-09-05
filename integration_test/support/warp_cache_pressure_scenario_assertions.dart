@@ -11,14 +11,12 @@ extension _WarpCachePressureAssertions on _WarpCachePressureDriver {
   }
 
   Future<void> _expectPressureContract() async {
+    await expectWarpRequestBounds(graph.evidence);
     final coverage = await _cacheCoverage();
     _expectWithinBudget(coverage);
-    expect(
-      origin.requestsFor('long-00').length,
-      greaterThan(coldRequestsBeforeReturn),
-    );
-    expect(peakMountedPlayers, lessThanOrEqualTo(8));
-    expect(peakControllerCapacity, lessThanOrEqualTo(8));
+    expect(origin.bytesServed('long-00'), greaterThan(coldBytesBeforeReturn));
+    expect(peakMountedPlayers, lessThanOrEqualTo(2));
+    expect(peakControllerCapacity, lessThanOrEqualTo(2));
     expect(unavailableWasVisible, isFalse);
     expect(activePlaceholderWasVisible, isFalse);
     _expectOriginBounded();
@@ -26,14 +24,14 @@ extension _WarpCachePressureAssertions on _WarpCachePressureDriver {
 
   void _expectOriginBounded() {
     expect(origin.maximumConcurrentResponses, lessThanOrEqualTo(4));
-    expect(origin.requests.length, lessThanOrEqualTo(160));
+    expect(origin.requests.length, lessThanOrEqualTo(40));
     for (final id in origin.bodyRequestedIds) {
       final coverage = origin.coverageFor(id);
       expect(coverage.isWithinObject, isTrue, reason: id);
-      expect(coverage.completedDuplicateBytes, 0, reason: id);
+      // A cold revisit intentionally refetches evicted bytes, at most once.
       expect(
-        coverage.duplicateBytes,
-        coverage.cancellationAttributedDuplicateBytes,
+        coverage.networkBytes,
+        lessThanOrEqualTo(origin.objectLength * 2 + 64 * 1024),
         reason: id,
       );
     }

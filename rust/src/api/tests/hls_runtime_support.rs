@@ -55,6 +55,7 @@ fn configuration(cache_directory: PathBuf, source: &str) -> GatewayConfiguration
         relays: Vec::new(),
         max_parallel_downloads: 2,
         max_storage_bytes: 1_048_576,
+        internet_data_limit: ghostr_net::internet_allowance::InternetDataLimit::Unlimited,
         network_status: ghostr_delivery::delivery_events::DeliveryNetworkStatus::new(
             ghostr_engine::origin_model::NetworkClass::Wifi,
             1,

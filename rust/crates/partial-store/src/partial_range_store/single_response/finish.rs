@@ -6,6 +6,7 @@ use anyhow::{Context as _, Result};
 use ghostr_engine::representation::{RepresentationBinding, TransferIdentity};
 
 mod live;
+mod resume;
 #[cfg(any(test, feature = "test"))]
 mod test_support;
 
@@ -67,6 +68,9 @@ impl PartialRangeStore {
         }
         let identity = state.identity.clone();
         let result = match state.storage {
+            SingleResponseStorage::Memory => {
+                self.finish_transient(binding.post().as_str(), total).await
+            }
             SingleResponseStorage::Live { started } => {
                 self.finish_live_single_response(binding, total, started, true)
                     .await
@@ -89,7 +93,13 @@ impl PartialRangeStore {
         state: SingleResponseState,
     ) -> Result<bool> {
         match state.storage {
+            SingleResponseStorage::Memory => {
+                self.abort_transient(binding.post().as_str()).await?;
+            }
             SingleResponseStorage::Live { .. } => {
+                if self.retain_versioned_prefix(binding, &state).await? {
+                    return Ok(true);
+                }
                 self.rollback_live_single_response(binding).await?;
             }
             SingleResponseStorage::Staged { .. } => {

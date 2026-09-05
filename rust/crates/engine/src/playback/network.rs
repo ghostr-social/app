@@ -1,7 +1,7 @@
 use crate::host_stats::ThroughputEstimate;
 use core::time::Duration;
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd)]
 pub enum EstimateConfidence {
     Low,
     Medium,
@@ -10,8 +10,8 @@ pub enum EstimateConfidence {
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct NetworkConditions {
-    pub(super) bytes_per_second: u64,
-    pub(super) variability_bytes_per_second: u64,
+    bytes_per_second: u64,
+    variability_bytes_per_second: u64,
     pub(super) ttfb: Duration,
     pub(super) confidence: EstimateConfidence,
 }
@@ -45,6 +45,17 @@ impl NetworkConditions {
                 estimate.last_observed_at_ms(),
                 observed_at_ms,
             ),
+        )
+    }
+
+    /// Intersects an origin estimate with observed shared-path constraints.
+    pub fn constrained_by(self, shared: Self) -> Self {
+        Self::new(
+            self.bytes_per_second.min(shared.bytes_per_second),
+            self.variability_bytes_per_second
+                .max(shared.variability_bytes_per_second),
+            self.ttfb.max(shared.ttfb),
+            self.confidence.min(shared.confidence),
         )
     }
 

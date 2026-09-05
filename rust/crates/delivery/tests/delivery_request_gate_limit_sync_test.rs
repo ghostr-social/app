@@ -12,10 +12,10 @@ use ghostr_net::media_request_executor::MediaRequestLimits;
 #[tokio::test]
 async fn data_usage_and_network_changes_synchronize_request_gate_limits() {
     let harness = start_harness("request-gate-limits", DeliveryOptions::default());
-    wait_limits(&harness.requests, limits(3, 3)).await;
+    wait_limits(&harness.requests, limits(2, 1)).await;
 
     harness.handle.set_data_usage(DataUsageLevel::Aggressive);
-    wait_limits(&harness.requests, limits(4, 4)).await;
+    wait_limits(&harness.requests, limits(2, 1)).await;
 
     let _ = harness.handle.update_network_profile(NetworkProfile {
         bandwidth_kbps: 0,
@@ -23,7 +23,7 @@ async fn data_usage_and_network_changes_synchronize_request_gate_limits() {
         packet_loss_bps: 0,
         max_connections_per_host: 1,
     });
-    wait_limits(&harness.requests, limits(4, 1)).await;
+    wait_limits(&harness.requests, limits(2, 1)).await;
 }
 
 async fn wait_limits(

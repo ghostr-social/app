@@ -5,20 +5,17 @@ use super::{
     AllocationReason, CandidateSnapshot, InFlightAction, OriginHealth, PlayabilitySnapshot,
     PlayableRange, RetainedAllocation,
 };
-use crate::PostId;
-use std::collections::HashSet;
 
 pub(super) fn retained(
     snapshot: &PlayabilitySnapshot,
     playback_endangered: bool,
     critical_slots: usize,
-    admitted: &HashSet<PostId>,
 ) -> Vec<RetainedAllocation> {
     let mut work = current_commitments(snapshot);
     if storage_displaces_speculation(snapshot) {
         return work;
     }
-    let future = future_commitments(snapshot, admitted);
+    let future = future_commitments(snapshot);
     let limit = future_limit(snapshot, playback_endangered, critical_slots, work.len());
     work.extend(future.into_iter().take(limit));
     work
@@ -33,10 +30,7 @@ fn current_commitments(snapshot: &PlayabilitySnapshot) -> Vec<RetainedAllocation
         .collect()
 }
 
-fn future_commitments(
-    snapshot: &PlayabilitySnapshot,
-    admitted: &HashSet<PostId>,
-) -> Vec<RetainedAllocation> {
+fn future_commitments(snapshot: &PlayabilitySnapshot) -> Vec<RetainedAllocation> {
     let mut candidates: Vec<_> = snapshot
         .candidates
         .iter()
@@ -44,7 +38,7 @@ fn future_commitments(
             candidate.retrieval_eligible
                 && candidate.post != snapshot.playback.current
                 && candidate.view_probability.value() >= 0.05
-                && (candidate.feed_offset.value() > 0 || admitted.contains(&candidate.post))
+                && (1..=2).contains(&candidate.feed_offset.value())
         })
         .collect();
     candidates.sort_by(|left, right| {
@@ -125,7 +119,9 @@ fn useful_origin<'a>(
     current: bool,
 ) -> Option<&'a OriginHealth> {
     let expired = active.committed_until_ms <= snapshot.observed_at_ms;
-    if !active.identity_current || (expired && !current) {
+    let needed = (1..=2).contains(&candidate.feed_offset.value())
+        && super::ranges::uncovered_bytes(active.effective_bytes, &candidate.present) > 0;
+    if !active.identity_current || (expired && !current && !needed) {
         return None;
     }
     candidate

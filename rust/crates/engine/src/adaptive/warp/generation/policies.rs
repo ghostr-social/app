@@ -27,6 +27,7 @@ pub(crate) enum OriginAdmissionGenerationPolicy {
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) struct WarpGenerationPolicies {
+    pub(crate) hedging: bool,
     pub(crate) hls: HlsGenerationPolicy,
     pub(crate) promotion: PromotionGenerationPolicy,
     pub(crate) range_alias: RangeAliasGenerationPolicy,
@@ -36,6 +37,7 @@ pub(crate) struct WarpGenerationPolicies {
 impl WarpGenerationPolicies {
     pub(crate) const fn current() -> Self {
         Self {
+            hedging: false,
             hls: HlsGenerationPolicy::BoundedObjectCursor,
             promotion: PromotionGenerationPolicy::ObservedResponse,
             range_alias: RangeAliasGenerationPolicy::PromotableDominance,

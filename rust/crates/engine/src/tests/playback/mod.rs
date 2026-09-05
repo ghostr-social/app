@@ -1,4 +1,8 @@
 mod adaptive_buffer_test;
+mod buffer_deficit_policy_test;
 mod estimate_confidence_test;
+mod indexed_service_deficit_test;
 mod playback_observation_validation_test;
 mod playback_session_stale_test;
+mod service_deficit_consumption_test;
+mod service_deficit_test;

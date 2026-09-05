@@ -17,7 +17,9 @@ fn planner_reserves_rescue_capacity_updates_prices_and_commits_one_action() {
             price_snapshot: None,
         });
     context.limits.request_tokens = 3;
-    let config = WarpPlannerConfig::default().with_rescue_thresholds(2_000, 2_000);
+    let config = WarpPlannerConfig::default()
+        .with_lookahead()
+        .with_rescue_thresholds(2_000, 2_000);
     let mut planner = WarpPlanner::new(config);
     let decision = planner.plan(WarpPlannerInput::new(
         &input,
@@ -35,10 +37,7 @@ fn planner_reserves_rescue_capacity_updates_prices_and_commits_one_action() {
     assert!(decision.search.committed_actions <= 1);
     assert_eq!(
         decision.common_random_seed,
-        decision
-            .evaluation
-            .expect("valid test fixture")
-            .common_random_seed
+        decision.evaluation.expect("fixture").common_random_seed
     );
     assert!(!decision.admissible_action_ids.is_empty());
     if let Some(selected) = &decision.selected {
@@ -57,7 +56,9 @@ fn safety_without_chance_feasible_rescue_records_degraded_least_risk_choice() {
         .for_each(|item| item.origins[0].failure_bps = 9_900);
     let base = AdaptivePlayabilityPolicy.plan(&input);
     let context = PlannerContext::explicitly_unavailable(&input);
-    let config = WarpPlannerConfig::default().with_rescue_thresholds(9_999, 9_999);
+    let config = WarpPlannerConfig::default()
+        .with_lookahead()
+        .with_rescue_thresholds(9_999, 9_999);
     let mut planner = WarpPlanner::new(config);
     let decision = planner.plan(WarpPlannerInput::new(
         &input,

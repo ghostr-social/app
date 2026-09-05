@@ -1,23 +1,23 @@
 part of 'warp_unsupported_hls_rescue_scenario.dart';
 
 extension _WarpUnsupportedHlsRescueWait on _WarpUnsupportedHlsRescueDriver {
-  Future<_UnsupportedHlsEvidence> _waitForDecodedRescue() async {
-    await _wait(_hasDecodedRescue, timeout: const Duration(seconds: 40));
-    final rescue = _rescueFocus()!;
+  Future<_UnsupportedHlsEvidence> _waitForDecodedAlternate() async {
+    await _wait(_hasDecodedAlternate, timeout: const Duration(seconds: 40));
+    final rescue = _alternateFocus()!;
     final before = graph.telemetry.probe.latestPositionFor(rescue)!;
     await _pumpFor(const Duration(seconds: 1));
     await _wait(() => _advancedPast(rescue, before));
     return (
       failedFocus: _failedFocus()!,
       failure: _failure()!,
-      rescueFocus: rescue,
+      alternateFocus: rescue,
       before: before,
       after: graph.telemetry.probe.latestPositionFor(rescue)!,
     );
   }
 
-  bool _hasDecodedRescue() {
-    final rescue = _rescueFocus();
+  bool _hasDecodedAlternate() {
+    final rescue = _alternateFocus();
     if (_failure() == null || _failedFocus() == null || rescue == null) {
       return false;
     }
@@ -42,10 +42,10 @@ extension _WarpUnsupportedHlsRescueWait on _WarpUnsupportedHlsRescueDriver {
   PlaybackFocus? _failedFocus() =>
       graph.focus.publishedFor(runtime.events[0].id);
 
-  PlaybackFocus? _rescueFocus() => graph.focus.occurrenceAfter(
+  PlaybackFocus? _alternateFocus() => graph.focus.occurrenceAfter(
     runtime.events[1].id,
     0,
-    cause: FeedFocusCause.transportRescue,
+    cause: FeedFocusCause.userNavigation,
   );
 
   bool _advancedPast(PlaybackFocus focus, Duration before) =>
@@ -92,7 +92,7 @@ extension _WarpUnsupportedHlsRescueWait on _WarpUnsupportedHlsRescueDriver {
   }
 
   String _timeoutEvidence(Duration timeout) =>
-      'Unsupported-HLS rescue timed out after $timeout; '
+      'Unsupported-HLS navigation timed out after $timeout; '
       'state=${graph.cubit.state.runtimeType}, '
       'delivery=${graph.deliveryProbe.evidence}, '
       'hlsRequests=${progressive.encryptedHlsRequests.length}, '

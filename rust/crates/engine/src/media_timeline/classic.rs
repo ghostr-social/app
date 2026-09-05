@@ -13,16 +13,17 @@ pub(super) fn parse(
     media: &mut Vec<TimedRange>,
 ) -> Result<bool, TimelineError> {
     let mut video = false;
-    for trak in children(moov, budget, 2)?
+    for (track_id, trak) in children(moov, budget, 2)?
         .into_iter()
         .filter(|atom| &atom.kind == b"trak")
+        .enumerate()
     {
         budget.track()?;
         let Some(track) = track_tables(&trak, budget)? else {
             continue;
         };
         video |= track.video;
-        map_samples(&track.tables, budget, media)?;
+        map_samples(&track.tables, budget, media, track_id as u16)?;
     }
     Ok(video)
 }
@@ -37,6 +38,9 @@ fn track_tables(
     budget: &mut ParserBudget<'_>,
 ) -> Result<Option<TrackEvidence>, TimelineError> {
     let trak_children = children(trak, budget, 3)?;
+    if find(&trak_children, b"edts").is_some() {
+        return Err(TimelineError::Unsupported);
+    }
     let Some(mdia) = find(&trak_children, b"mdia") else {
         return Ok(None);
     };

@@ -15,6 +15,7 @@ async fn rejects_zero_native_download_parallelism() {
             relays: Vec::new(),
             max_parallel_downloads: 0,
             max_storage_bytes: 1024,
+            internet_data_limit: ghostr_net::internet_allowance::InternetDataLimit::Unlimited,
             network_status: ghostr_delivery::delivery_events::DeliveryNetworkStatus::unavailable(),
             device_integration_origin: None,
         },

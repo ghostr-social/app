@@ -8,6 +8,12 @@ typedef _WarpPairWaitQuery = ({
 });
 
 extension WarpFeedPlaybackJourneyPairWait on WarpFeedPlaybackJourney {
+  /// Samples the engine's bounded decision history into the ledger.
+  Future<List<WarpDecisionRecord>> sampleDecisions() async {
+    decisionLedger.absorb((await evidence.decisions()).records);
+    return decisionLedger.records;
+  }
+
   Future<WarpDecisionPlanPair> waitForDecisionPlanPair(
     WidgetTester tester,
     bool Function(WarpDecisionRecord, WarpPlanEvidence) accepts, {
@@ -67,9 +73,9 @@ final class _WarpPairWait {
   }
 
   Future<WarpDecisionPlanPair?> _matchingPair() async {
-    final decisions = await journey.evidence.decisions();
+    final decisions = await journey.sampleDecisions();
     return warpFirstDecisionPlanPair((
-      decisions: decisions.records,
+      decisions: decisions,
       plans: _plans,
       afterSequence: query.afterSequence,
       afterRevision: query.afterRevision,

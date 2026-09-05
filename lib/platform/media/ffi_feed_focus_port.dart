@@ -16,7 +16,7 @@ typedef RustFocusUpdater =
 /// Forwards the viewer's focus window to the Rust delivery engine via
 /// `ffi_update_focus`, mapping media through the shared focus-item
 /// mapper so post ids match the engine's partial-store keys.
-final class FfiFeedFocusPort implements FeedFocusPort {
+final class FfiFeedFocusPort implements FeedFocusSink {
   FfiFeedFocusPort({RustFocusUpdater updateFocus = ffiUpdateFocus})
     : _updateFocus = updateFocus;
 
@@ -33,6 +33,14 @@ final class FfiFeedFocusPort implements FeedFocusPort {
   @override
   void focusChanged(FeedFocus focus) {
     _schedule(_FfiFocusWindow.of(focus), focus.watched);
+  }
+
+  @override
+  void clearFocus() {
+    _schedule(
+      const _FfiFocusWindow([], 0, FeedFocusCause.rosterChange, null),
+      Duration.zero,
+    );
   }
 
   void _schedule(_FfiFocusWindow window, Duration watched) {

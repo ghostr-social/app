@@ -4,7 +4,7 @@ extension _WarpUnsupportedHlsRescueAssertions
     on _WarpUnsupportedHlsRescueDriver {
   void _expectLiveContract(_UnsupportedHlsEvidence evidence) {
     _expectTypedHlsRejection(evidence);
-    _expectAutomaticRescue(evidence);
+    _expectManualNavigation(evidence);
     _expectDecodedAlternate(evidence);
     _expectBoundedOrigins(this);
   }
@@ -34,14 +34,10 @@ extension _WarpUnsupportedHlsRescueAssertions
     expect(leases.single.authority, isNull);
   }
 
-  void _expectAutomaticRescue(_UnsupportedHlsEvidence evidence) {
-    expect(evidence.rescueFocus.cause, FeedFocusCause.transportRescue);
-    expect(
-      evidence.rescueFocus.rescue?.reason,
-      FeedTransportRescueReason.deliveryFailed,
-    );
-    expect(evidence.rescueFocus.rescue?.rankDisplacement, 1);
-    expect(evidence.rescueFocus.rescue?.wait, Duration.zero);
+  void _expectManualNavigation(_UnsupportedHlsEvidence evidence) {
+    expect(evidence.alternateFocus.cause, FeedFocusCause.userNavigation);
+    expect(evidence.alternateFocus.rescue, isNull);
+    expect(graph.focus.hadTransportRescue, isFalse);
     expect(feed.activeIndex, 1);
     expect(
       graph.focus.occurrencesFor(runtime.events[1].id),
@@ -49,7 +45,7 @@ extension _WarpUnsupportedHlsRescueAssertions
         isA<PlaybackFocus>().having(
           (focus) => focus.cause,
           'cause',
-          FeedFocusCause.transportRescue,
+          FeedFocusCause.userNavigation,
         ),
       ),
     );
@@ -60,16 +56,16 @@ extension _WarpUnsupportedHlsRescueAssertions
     expect(stages, isNotEmpty);
     expect(stages.any((stage) => stage.firstFrameAt != null), isTrue);
     expect(
-      graph.telemetry.probe.presentationFor(evidence.rescueFocus),
+      graph.telemetry.probe.presentationFor(evidence.alternateFocus),
       isNotNull,
     );
     expect(
-      graph.telemetry.probe.playingLatency(evidence.rescueFocus),
+      graph.telemetry.probe.playingLatency(evidence.alternateFocus),
       isNotNull,
     );
     expect(evidence.after, greaterThan(evidence.before));
     expect(_alternateWasPlayerReady(), isTrue);
-    expect(unavailableWasVisible, isFalse);
+    expect(unavailableWasVisible, isTrue);
     expect(find.text('Video unavailable'), findsNothing);
   }
 

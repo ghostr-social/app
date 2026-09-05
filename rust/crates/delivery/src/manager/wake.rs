@@ -59,7 +59,7 @@ impl DeliveryWorker {
 
     async fn apply(&mut self, wake: Wake) -> Option<ClearCompletion> {
         match wake {
-            Wake::Clear(reply) => Some((reply, self.clear().await)),
+            Wake::Clear(request) => Some((request.reply, self.clear(request.scope).await)),
             Wake::Command(command) => {
                 self.apply_command(command).await;
                 None
@@ -145,6 +145,9 @@ impl DeliveryWorker {
         self.segmented.set_startup_eta_ms(self.qoe.startup_eta_ms());
         let segmented_changed = self.segmented.apply_focus(&segmented_focus);
         let current = self.state.focus().current().cloned();
+        if current.is_none() {
+            self.probes.clear();
+        }
         let progressive_changed = self.state.take_changed_representations();
         let hls_restarts = self.reset_focus_representations(
             progressive_changed,
@@ -174,7 +177,8 @@ impl DeliveryWorker {
         for binding in self.state.take_representation_bindings() {
             self.cancel_obsolete_transform(&binding);
             self.downloads.cancel_obsolete(&binding);
-            if let Err(error) = self.ctx.store.bind_representation(binding).await {
+            if let Err(error) = self.ctx.store.bind_representation(binding.clone()).await {
+                self.state.queue_representation(binding);
                 log::warn!("Video representation binding failed: {error:#}");
             }
         }

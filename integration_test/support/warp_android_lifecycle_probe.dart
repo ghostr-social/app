@@ -20,18 +20,9 @@ final class WarpAndroidLifecycleProbe with WidgetsBindingObserver {
   var _sawBackground = false;
 
   Future<void> get backgrounded => _backgrounded.future;
+  bool get hasResumedAfterBackground => _resumed.isCompleted;
 
   String get evidence => states.map((state) => state.name).join('|');
-
-  Future<void> requireResumedAfterBackground(Duration timeout) {
-    return _resumed.future.timeout(
-      timeout,
-      onTimeout: () => throw TimeoutException(
-        'Android foreground lifecycle was not observed; states=$evidence, '
-        'binding=${_binding.lifecycleState?.name}',
-      ),
-    );
-  }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {

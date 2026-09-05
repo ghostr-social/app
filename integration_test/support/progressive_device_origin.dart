@@ -86,7 +86,7 @@ final class ProgressiveDeviceOrigin {
   final Map<String, ProgressiveOriginRangeSemantics> _rangeSemanticsById;
   final requests = <ProgressiveOriginRequest>[];
   final _completed = <ProgressiveOriginRequest>[];
-  final _heldHeads = <HttpResponse>[];
+  final _heldHeads = <Socket>{};
   final _servedBytes = <String, int>{};
   final _clock = Stopwatch()..start();
   late final StreamSubscription<HttpRequest> _subscription;

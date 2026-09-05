@@ -7,6 +7,7 @@ use ghostr_engine::origin_model::OriginQuery;
 use std::path::PathBuf;
 
 mod lease;
+mod probe;
 mod recovery;
 mod trial_request;
 

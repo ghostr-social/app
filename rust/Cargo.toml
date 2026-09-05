@@ -83,6 +83,8 @@ serde_json = { workspace = true }
 sha2 = { workspace = true }
 
 [dev-dependencies]
+ghostr-gateway = { path = "crates/gateway", features = ["test"] }
+ghostr-net = { path = "crates/net", features = ["test"] }
 ghostr-delivery = { path = "crates/delivery", features = ["test"] }
 ghostr-discovery = { path = "crates/discovery", features = ["test"] }
 ghostr-engine = { path = "crates/engine", features = ["test"] }

@@ -168,6 +168,19 @@ extension FeedCubitNavigation on FeedCubit {
     if (current is! FeedLoaded || current.notice == null) return;
     emit(current.withoutNotice());
   }
+
+  void _watchPersistenceFailed(Object error, StackTrace stackTrace) {
+    if (_isClosing || isClosed) return;
+    _cancelPageTransition();
+    _loads.take();
+    _pageTransition += 1;
+    _emitState(
+      FeedFailure(
+        state.kind,
+        'Watch history is unavailable. Clear it in Settings to continue.',
+      ),
+    );
+  }
 }
 
 final class _PageTransitionBarrier {

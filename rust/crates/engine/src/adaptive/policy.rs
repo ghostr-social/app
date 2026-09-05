@@ -1,8 +1,8 @@
 use super::allocation::{append_candidate, AppendInputs};
 use super::commitments::retained;
-use super::current_lane::{inflight_need_bytes, CurrentLane};
+use super::current_lane::{current_need_bytes, CurrentLane};
 use super::eviction::evictions;
-use super::frontier::{admitted_posts, discovery_demand, upcoming_candidates};
+use super::frontier::{discovery_demand, upcoming_candidates};
 use super::plan::{AllocationPlan, DiscoveryDemand, NextReserveEvidence};
 use super::ranges::missing;
 use super::reserve_window::{build as build_ready_reserve, ReserveInputs, ReserveModePolicy};
@@ -29,14 +29,13 @@ impl AdaptivePlayabilityPolicy {
         };
         let emergency = snapshot.playback.authority == super::CurrentAuthority::Canonical
             && endangered(snapshot, current);
-        let mut plan = initial_plan(snapshot, inflight_need_bytes(current));
+        let mut plan = initial_plan(snapshot, current_need_bytes(snapshot, current, emergency));
         let lane = CurrentLane::new(snapshot, current, emergency, &plan);
         lane.append_start(&mut plan, snapshot);
         reserve_next(&mut plan, snapshot, &lane, reserve_policy);
         lane.append_depth(&mut plan, snapshot);
         append_followup(&mut plan, snapshot, &lane);
-        let admitted = admitted_posts(&plan, snapshot.network.connection_ceiling);
-        plan.retained = retained(snapshot, emergency, critical_slots(&plan), &admitted);
+        plan.retained = retained(snapshot, emergency, critical_slots(&plan));
         finalize(&mut plan, snapshot);
         plan
     }

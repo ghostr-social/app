@@ -109,7 +109,15 @@ impl DeliveryHandle {
     }
 }
 
-pub type ClearRequest = oneshot::Sender<anyhow::Result<()>>;
+pub struct ClearRequest {
+    pub(super) reply: oneshot::Sender<anyhow::Result<()>>,
+    pub(super) scope: ClearScope,
+}
+#[derive(Clone, Copy)]
+pub(crate) enum ClearScope {
+    All,
+    PlaybackAccess,
+}
 pub struct CommandReceiver {
     commands: MailboxReceiver,
     clears: mpsc::Receiver<ClearRequest>,

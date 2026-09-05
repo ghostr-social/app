@@ -59,10 +59,14 @@ extension _WarpLongSessionWait on _WarpLongSessionDriver {
     if (mounted > peakMountedPlayers) peakMountedPlayers = mounted;
     final capacity = videoPlaybackCapacityOf(graph.playback).inUse;
     if (capacity > peakControllerCapacity) peakControllerCapacity = capacity;
-    unavailableWasVisible |= find
-        .text('Video unavailable')
-        .evaluate()
-        .isNotEmpty;
+    final unavailable = find.text('Video unavailable').evaluate().isNotEmpty;
+    if (unavailable && !unavailableWasVisible) {
+      debugPrint(
+        'WARP_LONG_UNAVAILABLE ${_timeoutEvidence(Duration.zero, 'visible error')} '
+        'capacity=${videoPlaybackCapacityOf(graph.playback)}',
+      );
+    }
+    unavailableWasVisible |= unavailable;
     final state = graph.cubit.state;
     if (state is FeedLoaded) {
       activePlaceholderWasVisible |= _hasPlaceholder(
@@ -82,17 +86,4 @@ extension _WarpLongSessionWait on _WarpLongSessionDriver {
       )
       .evaluate()
       .isNotEmpty;
-
-  String _timeoutEvidence(Duration timeout, String? awaiting) {
-    final loaded = graph.cubit.state;
-    final active = loaded is FeedLoaded
-        ? '${loaded.activeIndex}:${loaded.posts[loaded.activeIndex].id.value}'
-        : 'none';
-    return 'Long WARP session timed out after $timeout; '
-        'awaiting=${awaiting ?? 'condition'}, activePage=$active, '
-        'state=${graph.cubit.state.runtimeType}, posts=$_loadedPostCount, '
-        'focuses=${graph.focus.occurrences.length}, handoffs=$handoffs, '
-        'players=$peakMountedPlayers, requests=${origin.requests.length}, '
-        'active=${origin.activeIncompleteRequestSequences}.';
-  }
 }

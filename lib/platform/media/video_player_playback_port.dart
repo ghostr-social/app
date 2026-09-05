@@ -83,9 +83,6 @@ class VideoPlayerPlaybackPort
 
   @override
   Widget buildSurface(VideoPlaybackSurfaceRequest request) {
-    if (request.reservesPreparedDecoder || request.keepWarmWhenInactive) {
-      _dependencies.controllerBudget.enableExtendedCapacity();
-    }
     return _VideoPlayerSurface(
       key: _dependencies.surfaceKey(request),
       request: request,
@@ -94,7 +91,7 @@ class VideoPlayerPlaybackPort
   }
 
   @override
-  void reportMemoryPressure() => _dependencies.controllerBudget.constrainTo(2);
+  void reportMemoryPressure() => _dependencies.controllerBudget.constrainTo(1);
 
   @override
   VideoPlaybackCapacitySnapshot get capacitySnapshot =>
@@ -111,7 +108,6 @@ final class _VideoPlayerSurfaceDependencies {
     required this.renderedFirstFrames,
   }) : controllerBudget = _VideoPlayerControllerBudget(
          warpMaximumConcurrentPlaybackControllers,
-         initialLimit: 2,
        ),
        handoff = _VideoPlayerPlaybackHandoff();
 

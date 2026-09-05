@@ -5,7 +5,7 @@
 //! evicts instead of merely refusing.
 
 use crate::partial_range_store::capacity::CapacityRevision;
-use crate::partial_range_store::{eviction, Entries, PartialRangeStore};
+use crate::partial_range_store::{Entries, PartialRangeStore};
 use anyhow::{Error, Result};
 use core::sync::atomic::Ordering;
 use log::warn;
@@ -167,31 +167,5 @@ impl PartialRangeStore {
             self.refusals.fetch_add(1, Ordering::Relaxed);
         }
         OutOfSpace { short, revision }.into()
-    }
-
-    /// Discards least recently used videos until `wanted` bytes are
-    /// back. Freeing bytes raises free space by the same amount, which
-    /// the capacity model is told about as the files go, so the caller
-    /// can compare the result against the shortfall directly.
-    async fn evict(&self, entries: &mut Entries, protected: &str, wanted: u64) -> u64 {
-        let reserved = self.reserved_keys().await;
-        let leased = |key: &str| self.leases.held(key) || reserved.contains(key);
-        let mut staged = self.staged_response_bytes().await;
-        for (key, bytes) in self.cleanup_debt_bytes().await {
-            *staged.entry(key).or_default() += bytes;
-        }
-        let victims = eviction::victims(entries, &staged, wanted, protected, &leased);
-        let mut freed = 0_u64;
-        for key in victims {
-            let bytes = entries
-                .get(&key)
-                .map_or(0, |entry| entry.accounted)
-                .saturating_add(staged.get(&key).copied().unwrap_or_default());
-            match self.discard(entries, &key).await {
-                Ok(()) => freed = freed.saturating_add(bytes),
-                Err(error) => warn!("Video store could not evict {key}: {error:#}"),
-            }
-        }
-        freed
     }
 }

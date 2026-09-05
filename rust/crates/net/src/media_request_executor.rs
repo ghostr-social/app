@@ -5,11 +5,13 @@
 //! is never misreported as origin response time, and redirects reacquire the
 //! exact authority before the next network hop.
 
+mod body_limit;
 mod gate;
 mod redirect;
 mod request;
 mod response;
 
+use crate::internet_allowance::InternetAllowance;
 use crate::outbound_media_client::MediaHttpRequests;
 use anyhow::{ensure, Context as _, Result};
 use core::num::NonZeroUsize;
@@ -67,10 +69,14 @@ pub struct MediaRequestExecutor {
 }
 
 impl MediaRequestExecutor {
-    pub fn new(client: Arc<dyn MediaHttpRequests>, limits: MediaRequestLimits) -> Self {
+    pub fn with_allowance(
+        client: Arc<dyn MediaHttpRequests>,
+        limits: MediaRequestLimits,
+        allowance: InternetAllowance,
+    ) -> Self {
         Self {
             client,
-            gate: MediaRequestGate::new(limits),
+            gate: MediaRequestGate::new(limits, allowance),
         }
     }
 
@@ -104,3 +110,6 @@ impl MediaRequestExecutor {
         self.gate.active_for(authority)
     }
 }
+
+#[cfg(any(test, feature = "test"))]
+mod test_support;

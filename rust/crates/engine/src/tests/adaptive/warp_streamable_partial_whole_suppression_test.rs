@@ -8,7 +8,7 @@ use crate::origin_model::OriginModel;
 use crate::{ByteRange, PostId};
 
 #[test]
-fn promotable_partial_range_does_not_offer_duplicate_whole_fetch() {
+fn an_unopened_range_grant_does_not_prove_whole_response_continuation() {
     let mut state = partial_state(TOTAL);
     state.request_slice_bytes = 65_536;
     state.playback.current = PostId::new("p1");
@@ -16,11 +16,9 @@ fn promotable_partial_range_does_not_offer_duplicate_whole_fetch() {
     state.candidates[1].layout = MediaLayout::Unknown;
     let decision = plan(&state, PlannerCapability::reported(true, None, 1));
 
-    assert_eq!(
-        decision.generated.actions.len(),
-        1,
-        "{:#?}",
-        decision.generated.actions
+    assert!(
+        has_whole(&decision),
+        "a grant does not extend an HTTP 206 response"
     );
     let PlannerCommand::Transfer(allocation) = &decision.generated.actions[0].command else {
         panic!("range transfer");

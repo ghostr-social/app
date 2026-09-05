@@ -7,14 +7,15 @@ use anyhow::{ensure, Context as _, Result};
 use core::time::Duration;
 use ghostr_engine::adaptive::PreemptionAuthority;
 use ghostr_engine::RequestAuthority;
-use reqwest::header::LOCATION;
-use reqwest::{Client, Request, Response, StatusCode, Url};
+use reqwest::{Client, Request, Response, Url};
 use std::collections::HashSet;
 use std::sync::Arc;
 use tokio::time::Instant;
 
 mod forwarded;
+mod target;
 use forwarded::ForwardedRequest;
+use target::{redirect_target, visit_key};
 
 const MAX_REDIRECTS: usize = 10;
 
@@ -23,6 +24,13 @@ pub(super) struct RedirectContext {
     gate: MediaRequestGate,
     priority: PreemptionAuthority,
     public_redirects_only: bool,
+    maximum_body: u64,
+}
+
+#[derive(Clone, Copy)]
+pub(super) struct RedirectPolicy {
+    pub(super) public_only: bool,
+    pub(super) maximum_body: u64,
 }
 
 pub(super) struct AdmittedHop {
@@ -42,13 +50,14 @@ impl RedirectContext {
         client: Arc<dyn MediaHttpRequests>,
         gate: MediaRequestGate,
         priority: PreemptionAuthority,
-        public_redirects_only: bool,
+        policy: RedirectPolicy,
     ) -> Self {
         Self {
             client,
             gate,
             priority,
-            public_redirects_only,
+            public_redirects_only: policy.public_only,
+            maximum_body: policy.maximum_body,
         }
     }
 
@@ -70,7 +79,8 @@ impl RedirectContext {
         validate_request(&next, &authority)?;
         *next.method_mut() = method;
         let started = Instant::now();
-        let lease = self.acquire(authority, deadline).await?;
+        let mut lease = self.acquire(authority, deadline).await?;
+        lease.reserve_body(self.maximum_body)?;
         Ok((AdmittedHop::new(client, next, lease), started.elapsed()))
     }
 
@@ -102,12 +112,13 @@ impl AdmittedHop {
         }
     }
 
-    async fn execute(self, deadline: Option<Instant>) -> Result<HopResponse> {
+    async fn execute(mut self, deadline: Option<Instant>) -> Result<HopResponse> {
         if deadline.is_some_and(|value| Instant::now() >= value) {
             return Err(MediaRequestAdmissionTimeout.into());
         }
         let request = ForwardedRequest::capture(&self.request)?;
         self.lease.record_request();
+        self.lease.sending();
         let response = self
             .client
             .execute(self.request)
@@ -133,7 +144,7 @@ pub(super) async fn send(
     let mut visited = HashSet::new();
     let mut admission_wait = Duration::ZERO;
     for followed in 0..=MAX_REDIRECTS {
-        let result = hop.execute(deadline).await?;
+        let mut result = hop.execute(deadline).await?;
         crate::response_limits::validate_response_headers(result.response.headers())
             .context("validate media response headers")?;
         visited.insert(visit_key(result.request.url()));
@@ -150,6 +161,9 @@ pub(super) async fn send(
             "media redirect loop detected"
         );
         let request = result.request.redirected(&target)?;
+        if result.response.content_length() == Some(0) {
+            result.lease.complete_body()?;
+        }
         drop(result.response);
         drop(result.lease);
         let (next, waited) = context.admit(target, request, deadline).await?;
@@ -157,40 +171,4 @@ pub(super) async fn send(
         hop = next;
     }
     unreachable!("redirect loop is bounded")
-}
-
-fn visit_key(url: &Url) -> Url {
-    let mut key = url.clone();
-    key.set_fragment(None);
-    key
-}
-
-fn redirect_target(response: &Response) -> Result<Option<Url>> {
-    if !followed_status(response.status()) {
-        return Ok(None);
-    }
-    let Some(location) = response.headers().get(LOCATION) else {
-        return Ok(None);
-    };
-    let location = location.to_str().context("redirect Location is not text")?;
-    let target = response
-        .url()
-        .join(location)
-        .context("redirect Location is invalid")?;
-    ensure!(
-        target.username().is_empty() && target.password().is_none(),
-        "media redirect credentials are forbidden"
-    );
-    Ok(Some(target))
-}
-
-fn followed_status(status: StatusCode) -> bool {
-    matches!(
-        status,
-        StatusCode::MOVED_PERMANENTLY
-            | StatusCode::FOUND
-            | StatusCode::SEE_OTHER
-            | StatusCode::TEMPORARY_REDIRECT
-            | StatusCode::PERMANENT_REDIRECT
-    )
 }

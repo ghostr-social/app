@@ -23,9 +23,15 @@ pub(super) async fn video(
         .await
         .ok();
     reply(
-        StatusCode::PARTIAL_CONTENT,
+        if headers.contains_key(header::RANGE) {
+            StatusCode::PARTIAL_CONTENT
+        } else {
+            StatusCode::OK
+        },
         end - start,
-        Some(format!("bytes {start}-{}/{total}", end - 1)),
+        headers
+            .contains_key(header::RANGE)
+            .then(|| format!("bytes {start}-{}/{total}", end - 1)),
         Body::from_stream(ReceiverStream::new(stream)),
     )
 }
@@ -43,6 +49,7 @@ pub(super) async fn manifest(
 fn reply(status: StatusCode, length: u64, range: Option<String>, body: Body) -> Response<Body> {
     let mut response = Response::builder()
         .status(status)
+        .header(header::CACHE_CONTROL, "public, max-age=3600")
         .header(header::CONTENT_TYPE, "video/mp4")
         .header(header::CONTENT_LENGTH, length)
         .header(header::ACCEPT_RANGES, "bytes")
@@ -54,7 +61,10 @@ fn reply(status: StatusCode, length: u64, range: Option<String>, body: Body) -> 
 }
 
 fn requested(headers: &HeaderMap, total: u64) -> (u64, u64) {
-    let value = headers[header::RANGE]
+    let Some(value) = headers.get(header::RANGE) else {
+        return (0, total);
+    };
+    let value = value
         .to_str()
         .expect("valid test fixture")
         .trim_start_matches("bytes=");

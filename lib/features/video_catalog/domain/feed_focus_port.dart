@@ -81,6 +81,11 @@ abstract interface class FeedFocusPort {
   void focusChanged(FeedFocus focus);
 }
 
+/// Global delivery ownership, including the absence of a visible feed.
+abstract interface class FeedFocusSink implements FeedFocusPort {
+  void clearFocus();
+}
+
 /// Exclusive ownership of the shared delivery focus for one feed surface.
 abstract interface class FeedFocusLease implements FeedFocusPort {
   void activate();

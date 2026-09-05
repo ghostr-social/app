@@ -105,9 +105,8 @@ fn navigation_action(
 
 fn correction_action(anchor: &DeliveryFocus, update: &DeliveryFocus) -> PairAction {
     match direction(anchor, update) {
-        Some(Ordering::Less) => PairAction::ReplaceLatest,
+        Some(Ordering::Less) | None => PairAction::ReplaceLatest,
         Some(Ordering::Equal | Ordering::Greater) => PairAction::Collapse,
-        None => PairAction::ReplaceLatest,
     }
 }
 

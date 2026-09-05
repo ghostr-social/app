@@ -1,4 +1,4 @@
-use super::{ADMITTED, TOTAL};
+use super::ADMITTED;
 use ghostr_engine::adaptive::{
     DecisionRecord, RecordedPreemptionAuthority, RecordedResourceCost, RecordedRetrievalRequest,
     RecordedWarpCommand,
@@ -17,23 +17,24 @@ pub(super) fn assert_selected_intent(record: &DecisionRecord) {
     };
     assert_eq!(
         transfer.authority,
-        RecordedPreemptionAuthority::Speculative,
-        "the selected intent must retain speculative authority"
+        RecordedPreemptionAuthority::Transition,
+        "the selected intent must retain the bounded encoded-window authority"
     );
     assert!(
         matches!(
             transfer.request,
             RecordedRetrievalRequest::FetchRange {
                 bytes_start: 0,
-                bytes_end: TOTAL,
+                bytes_end: ADMITTED,
                 promotion: None,
             }
         ),
-        "the selected intent must retain its full requested range"
+        "selected: {selected:#?}; executed: {:#?}",
+        record.executed_request
     );
     assert_eq!(
         selected.resources,
-        resources(TOTAL),
+        resources(ADMITTED),
         "selected resources must describe the requested range"
     );
 }

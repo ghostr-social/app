@@ -4,7 +4,7 @@ mod focus_wait_fixture;
 mod transform_delivery_fixture;
 mod transform_wait_fixture;
 
-use delivery_fixture::evidence::DeliveryEvidence as _;
+use delivery_fixture::decision::wait_for_history;
 use delivery_fixture::items::{focus_now, sized_item};
 use delivery_fixture::options::DeliveryOptions;
 use delivery_fixture::{start_harness_with_store, temp_directory};
@@ -52,13 +52,13 @@ async fn exact_tail_mp4_failure_reaches_the_production_fast_start_transform() {
         .expect("valid test fixture")
         .expect("valid test fixture");
     assert_eq!(top_level_boxes(&output), [*b"ftyp", *b"moov", *b"mdat"]);
-    assert!(harness.handle.decision_history().records.iter().any(|record| {
+    wait_for_history(&harness.handle, |history| history.records.iter().any(|record| {
         matches!(record.eventual_outcome, DecisionOutcome::Succeeded { bytes, .. } if bytes == total)
             && matches!(
                 record.warp_decision.as_ref().and_then(|item| item.selected.as_ref()),
                 Some(selected) if matches!(selected.command, RecordedWarpCommand::Transform { .. })
             )
-    }));
+    })).await;
     harness.handle.clear().await.expect("valid test fixture");
     std::fs::remove_dir_all(&harness.root).ok();
 }

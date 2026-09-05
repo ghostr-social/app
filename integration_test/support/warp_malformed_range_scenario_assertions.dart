@@ -23,7 +23,13 @@ extension _MalformedRangeAssertions on _MalformedRangeScenario {
       isFalse,
     );
     expect(_malformedPreparationWasStartable(), isFalse);
-    expect(journey.playerStages.attemptsFor(malformedId), isEmpty);
+    expect(
+      journey.playerStages
+          .attemptsFor(malformedId)
+          .where((attempt) => attempt.firstFrameAt != null),
+      isEmpty,
+      reason: 'Rejected bytes cannot produce a decoded frame.',
+    );
   }
 
   void expectBoundedOriginWork() {
@@ -58,13 +64,13 @@ extension _MalformedRangeAssertions on _MalformedRangeScenario {
     });
   }
 
-  Future<void> expectDecodedRescue(
+  Future<void> expectDecodedNext(
     WidgetTester tester,
     PlaybackFocus focus,
   ) async {
-    expect(focus.cause, FeedFocusCause.transportRescue);
-    expect(focus.rescue, isNotNull);
-    expect(focus.rescue?.rankDisplacement, 1);
+    expect(focus.cause, FeedFocusCause.userNavigation);
+    expect(focus.rescue, isNull);
+    expect(journey.focus.hadTransportRescue, isFalse);
     journey.expectSinglePlayerAttempt(focus);
     expect(find.text('Video unavailable'), findsNothing);
     final before = journey.telemetry.probe.latestPositionFor(focus)!;
@@ -82,7 +88,7 @@ extension _MalformedRangeAssertions on _MalformedRangeScenario {
     debugPrint(
       'WARP_MALFORMED_RANGE requests=${requests.length} bytes=$bytes '
       'snapshots=${_malformedSnapshots.length} '
-      'rescue=${focus.rescue?.reason.name}:1',
+      'navigation=${focus.cause.name} rescues=0',
     );
   }
 }

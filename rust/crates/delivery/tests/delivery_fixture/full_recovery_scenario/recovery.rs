@@ -5,25 +5,6 @@ use crate::delivery_fixture::items::{focus_now, sized_item};
 use ghostr_engine::origin_model::Admission;
 
 impl Scenario {
-    pub(super) async fn start_probe(&mut self) -> ObservedRequest {
-        self.harness.handle.update_focus(focus_now(
-            vec![sized_item(
-                "probe",
-                &self.probe_url,
-                TRIAL_BYTES as u64,
-                10_000,
-            )],
-            0,
-            0,
-        ));
-        let probe = self.origin.next_within("capped probe").await;
-        assert_eq!(probe.method.as_str(), "GET");
-        assert_eq!(probe.path, "/probe.mp4");
-        assert_eq!(probe.range.as_deref(), Some("bytes=0-65535"));
-        assert_eq!(probe.encoding.as_deref(), Some("identity"));
-        probe
-    }
-
     pub(super) async fn complete_probe_with_parallel_work(&mut self, probe: ObservedRequest) {
         self.harness.handle.update_focus(focus_now(
             vec![
@@ -34,9 +15,20 @@ impl Scenario {
             0,
         ));
         let fallback = self.origin.next_within("parallel range").await;
-        assert_eq!(fallback.method.as_str(), "GET");
-        assert_eq!(fallback.path, "/parallel.mp4");
-        assert_eq!(fallback.range.as_deref(), Some("bytes=0-4095"));
+        assert_eq!(
+            fallback.method.as_str(),
+            "GET",
+            "parallel fallback uses GET"
+        );
+        assert_eq!(
+            fallback.path, "/parallel.mp4",
+            "parallel fallback selects its source"
+        );
+        assert_eq!(
+            fallback.range.as_deref(),
+            Some("bytes=0-4095"),
+            "parallel range stays bounded"
+        );
         self.assert_method_specific_lease().await;
         probe.finish(PROBE_BYTES).await;
         fallback.finish(CHUNK_BYTES as usize).await;
@@ -57,7 +49,11 @@ impl Scenario {
             0,
         ));
         let trial = self.next_trial_request().await;
-        assert_eq!(trial.encoding.as_deref(), Some("identity"));
+        assert_eq!(
+            trial.encoding.as_deref(),
+            Some("identity"),
+            "trial uses identity encoding"
+        );
         trial
     }
 
@@ -73,7 +69,7 @@ impl Scenario {
         .await;
     }
 
-    pub(super) async fn finish_trial(&mut self, trial: ObservedRequest) {
+    pub(super) async fn finish_trial(&self, trial: ObservedRequest) {
         let path = self.stats_path();
         let query = self.trial_query();
         trial.finish(TRIAL_BYTES - 1).await;

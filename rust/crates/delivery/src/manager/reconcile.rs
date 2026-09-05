@@ -11,6 +11,7 @@ use ghostr_partial_store::partial_range_store::StoredMediaSnapshot;
 use std::collections::{HashMap, HashSet};
 
 mod cycle;
+mod storage;
 
 #[derive(Default)]
 struct PlanningStoreState {
@@ -70,6 +71,10 @@ impl DeliveryWorker {
         planned: PlannedWork,
         stored: &PlanningStoreState,
     ) {
+        if self.reclaim_cold_storage(&planned).await {
+            self.request_immediate_replan();
+            return;
+        }
         self.schedule_hedge_tail_wakes(&planned.hedge_tails);
         self.schedule_network_refill_wake(planned.network_refill_deadline_ms);
         if !self
@@ -133,47 +138,6 @@ impl DeliveryWorker {
             planned.plan.clone(),
             startups,
         );
-    }
-
-    /// The planning slice of the window, widened to the full roster
-    /// only under storage pressure so eviction can weigh every stored
-    /// post, not just the current neighbourhood.
-    fn collection_window(
-        &self,
-        capacity: &ghostr_partial_store::partial_range_store::capacity::CapacitySnapshot,
-    ) -> Vec<PostId> {
-        if capacity.used_bytes() >= capacity.limit_bytes().saturating_mul(9) / 10 {
-            return self.state.window_posts();
-        }
-        self.state.planning_window_posts()
-    }
-
-    async fn collect_stored(
-        &self,
-        window: &[PostId],
-        timeline_posts: &HashSet<PostId>,
-    ) -> PlanningStoreState {
-        let mut stored = PlanningStoreState::default();
-        for post in window {
-            let Some(binding) = self.state.catalog().binding(post) else {
-                continue;
-            };
-            if let Ok(snapshot) = self.ctx.store.media_snapshot(post.as_str()).await {
-                if snapshot
-                    .binding()
-                    .is_some_and(|stored| stored == &binding || stored.derives_from(&binding))
-                {
-                    if let Some(transformed) = snapshot
-                        .binding()
-                        .filter(|stored| stored.derives_from(&binding))
-                    {
-                        stored.transformed.insert(post.clone(), transformed.clone());
-                    }
-                    stored.insert(post.clone(), snapshot, timeline_posts.contains(post));
-                }
-            }
-        }
-        stored
     }
 
     fn reconcile_probe_bodies(&mut self) {

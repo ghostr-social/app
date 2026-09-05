@@ -85,3 +85,9 @@ mod warp_unknown_prefix_readiness_test;
 mod warp_unknown_probe_continuation_test;
 mod zero_storage_capacity_test;
 mod zero_storage_plan_test;
+
+mod bounded_core_reserve_test;
+mod warp_useful_transfer_replan_test;
+
+mod warp_evicted_current_priority_test;
+mod whole_fallback_storage_pressure_test;

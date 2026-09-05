@@ -41,8 +41,11 @@ async fn rejected_head_cannot_block_an_admitted_bootstrap_get() {
         "requests={requests:?}, total={total:?}, ranges={ranges:?}"
     );
     assert!(!body.is_empty());
-    assert!(requests
-        .iter()
-        .any(|request| request.method == Method::HEAD));
+    assert!(
+        requests
+            .iter()
+            .all(|request| request.method != Method::HEAD),
+        "visible playback bypasses speculative HEAD"
+    );
     assert!(requests.iter().any(|request| request.method == Method::GET));
 }

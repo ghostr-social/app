@@ -47,10 +47,13 @@ fn assert_head_record(history: &DecisionHistorySnapshot) {
             )
         })
         .expect("terminal HEAD decision");
-    assert!(matches!(
-        record.warp_decision.as_ref().and_then(|warp| warp.selected.as_ref()),
-        Some(action) if matches!(action.command, RecordedWarpCommand::ProbeHead { .. })
-    ));
+    assert!(
+        matches!(
+            record.warp_decision.as_ref().and_then(|warp| warp.selected.as_ref()),
+            Some(action) if matches!(action.command, RecordedWarpCommand::ProbeHead { .. })
+        ),
+        "HEAD decision retains selected provenance"
+    );
     let DecisionOutcome::HeadObserved {
         content_length,
         accept_ranges,
@@ -59,8 +62,12 @@ fn assert_head_record(history: &DecisionHistorySnapshot) {
     else {
         panic!("terminal HEAD observation")
     };
-    assert_eq!((content_length, accept_ranges), (8, Some(true)));
-    assert!(elapsed_ms < 2_000);
+    assert_eq!(
+        (content_length, accept_ranges),
+        (8, Some(true)),
+        "HEAD outcome reports observed geometry"
+    );
+    assert!(elapsed_ms < 2_000, "HEAD outcome has bounded latency");
 }
 
 async fn wait_for_head(handle: &DeliveryHandle) -> DecisionHistorySnapshot {

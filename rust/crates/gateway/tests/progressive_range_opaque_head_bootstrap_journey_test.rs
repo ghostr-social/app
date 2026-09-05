@@ -29,8 +29,11 @@ async fn head_without_accept_ranges_is_resolved_by_an_admitted_206() {
     assert_eq!(status, StatusCode::PARTIAL_CONTENT);
     assert!(!body.is_empty());
     let requests = origin.requests();
-    assert!(requests
-        .iter()
-        .any(|request| request.method == Method::HEAD));
+    assert!(
+        requests
+            .iter()
+            .all(|request| request.method != Method::HEAD),
+        "visible playback bypasses speculative HEAD"
+    );
     assert!(requests.iter().any(|request| request.method == Method::GET));
 }

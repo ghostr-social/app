@@ -48,7 +48,11 @@ pub async fn wait_for_file_with_limit(path: &std::path::Path, limit: Duration) {
 
 pub async fn wait_not_servable(posts: &ServablePosts, key: &str) {
     let deadline = Instant::now() + WAIT_LIMIT;
-    while posts.contains(key) {
+    while !posts
+        .videos()
+        .iter()
+        .any(|video| video.id == key && !video.status.is_servable())
+    {
         assert!(
             Instant::now() < deadline,
             "timed out waiting for {key} to become unservable"

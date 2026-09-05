@@ -1,5 +1,4 @@
 use super::boxes::Atom;
-use super::classic::samples::{scale_ceil, scale_floor};
 use super::limits::ParserBudget;
 use super::{TimedRange, TimelineError};
 use crate::ByteRange;
@@ -85,8 +84,14 @@ fn timed(input: ReferenceTiming) -> Result<TimedRange, TimelineError> {
         .checked_add(input.duration)
         .ok_or(TimelineError::Malformed)?;
     Ok(TimedRange {
-        start_ms: scale_floor(input.start, input.timescale),
-        end_ms: scale_ceil(end_time, input.timescale),
+        decode_start: None,
+        time: super::timing::PresentationTime::new(
+            i128::from(input.start),
+            i128::from(end_time),
+            input.timescale,
+        )?,
+        track: 0,
+        sync_sample: None,
         bytes: ByteRange::new(input.offset, end_offset),
     })
 }

@@ -77,6 +77,7 @@ impl SegmentedCache {
     }
 }
 
+#[derive(Clone, Copy)]
 struct RecordInput<'a> {
     generation: u64,
     item: &'a SegmentedFocusItem,

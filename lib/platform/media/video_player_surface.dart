@@ -160,7 +160,8 @@ class _VideoPlayerSurfaceState extends State<_VideoPlayerSurface> {
 
   Future<void> _releaseWhenClosed(void Function()? released) async {
     final teardownProven = await _lifecycle.waitControllers();
-    if (teardownProven) released?.call();
+    if (!teardownProven) await _lifecycle.proofRecovered;
+    released?.call();
   }
 
   Future<void> _disposeSafely(VideoPlayerController controller) async {
@@ -170,7 +171,9 @@ class _VideoPlayerSurfaceState extends State<_VideoPlayerSurface> {
   Future<void> _disposeAfterUnsafeCommands(
     VideoPlayerController controller,
   ) async {
-    await widget.handoff.waitUnsafeCommands(controller);
-    await widget.controllerDisposer(controller);
+    final handoff = widget.handoff;
+    final disposeController = widget.controllerDisposer;
+    await handoff.waitUnsafeCommands(controller);
+    await disposeController(controller);
   }
 }

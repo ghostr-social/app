@@ -1,5 +1,5 @@
 use crate::manager::reconcile_warp;
-use crate::tests::gateway_range_plan_fixture::demand_plan;
+use crate::tests::gateway_range_plan_fixture::{demand_plan, OBJECT_BYTES};
 use ghostr_engine::ByteRange;
 
 #[test]
@@ -13,6 +13,5 @@ fn conditional_promotion_excludes_sibling_ranges_until_response_semantics() {
         .map(|transfer| transfer.request.chunk.range)
         .collect();
 
-    assert_eq!(ranges.first(), Some(&demanded), "{ranges:?}");
-    assert_eq!(ranges, vec![demanded]);
+    assert_eq!(ranges, vec![ByteRange::new(demanded.start, OBJECT_BYTES)]);
 }

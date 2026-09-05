@@ -44,10 +44,6 @@ impl OriginRequestProfile {
         self.planned_bytes
     }
 
-    pub const fn media(self) -> MediaClass {
-        self.media
-    }
-
     const fn with_transport(self, method: RequestMethod, planned_bytes: u64) -> Self {
         Self::new(method, planned_bytes, self.media)
     }
@@ -72,10 +68,6 @@ impl OriginAttemptProfile {
             request: forecast,
             admission_intent: super::OriginAdmissionIntent::Delivery,
         }
-    }
-
-    pub const fn forecast(self) -> OriginRequestProfile {
-        self.forecast
     }
 
     pub const fn request(self) -> OriginRequestProfile {
@@ -103,7 +95,6 @@ impl OriginAttemptProfile {
 
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct OriginAttemptContext {
-    profile: OriginAttemptProfile,
     request_context: OriginContext,
 }
 
@@ -120,17 +111,13 @@ impl OriginAttemptContext {
             .with_network(network)
             .with_concurrency(concurrency)
             .with_observed_at_ms(started_at_ms);
-        Self {
-            profile,
-            request_context,
-        }
-    }
-
-    pub const fn profile(self) -> OriginAttemptProfile {
-        self.profile
+        Self { request_context }
     }
 
     pub const fn request_context(self) -> OriginContext {
         self.request_context
     }
 }
+
+#[cfg(any(test, feature = "test"))]
+mod test_support;

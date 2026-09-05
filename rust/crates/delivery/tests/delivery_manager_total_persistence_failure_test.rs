@@ -12,7 +12,7 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 
 #[tokio::test]
-async fn unpersistable_total_length_does_not_stop_delivery_reconciliation() {
+async fn unwritable_store_stops_origin_work_and_recovers_after_storage_repair() {
     let parent = temp_directory("ghostr-total-persistence-failure");
     std::fs::create_dir(&parent).expect("create test directory");
     let blocked_root = parent.join("blocked");
@@ -35,8 +35,18 @@ async fn unpersistable_total_length_does_not_stop_delivery_reconciliation() {
         0,
     ));
 
+    tokio::time::sleep(Duration::from_millis(100)).await;
+    assert!(
+        hits(&log).is_empty(),
+        "no origin bytes without storage admission"
+    );
+    assert!(blocked_root.is_file(), "store root is blocked");
+    std::fs::remove_file(&blocked_root).expect("repair store root");
+    std::fs::create_dir(&blocked_root).expect("restore store directory");
+    harness.handle.storage_changed();
     wait_for_hit(&log).await;
-    assert!(blocked_root.is_file(), "manifest write must have failed");
+    delivery_fixture::wait::wait_for_ranges(&harness.store, "aa11", &[(0, 16)]).await;
+    harness.handle.clear().await.expect("clear delivery");
     std::fs::remove_dir_all(parent).expect("remove test directory");
 }
 

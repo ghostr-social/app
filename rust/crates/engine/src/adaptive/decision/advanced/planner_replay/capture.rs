@@ -68,6 +68,7 @@ fn recordable(
 fn config(value: crate::adaptive::WarpPlannerConfig) -> Option<RecordedPlannerConfig> {
     let (depth, width, expansions, latency) = value.beam.replay_parts();
     Some(RecordedPlannerConfig {
+        profile: Some(value.profile),
         beam_depth: u64::try_from(depth).ok()?,
         beam_width: u64::try_from(width).ok()?,
         beam_expansions: u64::try_from(expansions).ok()?,

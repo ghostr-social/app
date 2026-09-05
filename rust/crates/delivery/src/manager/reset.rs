@@ -1,9 +1,10 @@
 //! Atomic manager-owned reset used by the debug dashboard.
 
+use crate::delivery_events::ClearScope;
 use crate::manager::DeliveryWorker;
 
 impl DeliveryWorker {
-    pub(super) async fn clear(&mut self) -> anyhow::Result<()> {
+    pub(super) async fn clear(&mut self, scope: ClearScope) -> anyhow::Result<()> {
         self.commands.discard_pending();
         self.cancel_all_transforms();
         self.downloads.clear();
@@ -23,6 +24,9 @@ impl DeliveryWorker {
         self.state.clear();
         self.focus_lease.pin(self.ctx.store.as_ref(), None);
         self.cache.replace(Vec::new());
-        self.ctx.store.clear().await
+        match scope {
+            ClearScope::All => self.ctx.store.clear().await,
+            ClearScope::PlaybackAccess => self.ctx.store.reset_playback_access().await,
+        }
     }
 }

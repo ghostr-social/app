@@ -125,8 +125,9 @@ fn range_compliance(
     }
     match observed {
         Some(super::ResponseObservation::Partial { .. }) => return Some(true),
-        Some(super::ResponseObservation::Body { .. })
-        | Some(super::ResponseObservation::Ignored { .. }) => return Some(false),
+        Some(
+            super::ResponseObservation::Body { .. } | super::ResponseObservation::Ignored { .. },
+        ) => return Some(false),
         Some(super::ResponseObservation::Rejected(_)) | None => {}
     }
     match result {

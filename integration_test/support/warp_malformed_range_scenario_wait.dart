@@ -1,14 +1,14 @@
 part of 'warp_malformed_range_scenario.dart';
 
 extension _MalformedRangeWait on _MalformedRangeScenario {
-  Future<void> waitForRejectedRangeAndRescue(WidgetTester tester) async {
+  Future<void> waitForRejectedRange(WidgetTester tester) async {
     final watch = Stopwatch()..start();
     while (watch.elapsed < const Duration(seconds: 15)) {
-      if (_hasRejectedRange() && _hasVerifiedRescue()) return;
+      if (_hasRejectedRange()) return;
       await journey.pumpFor(tester, const Duration(milliseconds: 70));
     }
     await journey.reportSchedulingEvidence();
-    fail('Malformed range did not yield a verified rescue candidate.');
+    fail('Malformed range was not rejected without exposing bytes.');
   }
 
   bool _hasRejectedRange() {
@@ -25,26 +25,19 @@ extension _MalformedRangeWait on _MalformedRangeScenario {
         snapshots.last.bytesPresent == BigInt.zero;
   }
 
-  bool _hasVerifiedRescue() {
-    if (journey.preparation.observations.isEmpty) return false;
-    final ready = journey.preparation.latest.upcoming.any((asset) {
-      return asset.authority.deliveryId == rescueId &&
-          asset.readiness == PlaybackPreparationReadiness.ready;
-    });
-    if (!ready) return false;
-    return journey.playerStages.attemptsFor(rescueId).any((attempt) {
-      return attempt.firstFrameAt != null && !attempt.isTerminal;
-    });
-  }
-
-  Future<PlaybackFocus> swipeToRescue(WidgetTester tester) async {
+  Future<PlaybackFocus> navigatePastRejectedVideo(WidgetTester tester) async {
     final cursor = journey.focusCursor;
+    await journey.swipeUp(tester);
+    await journey.waitForCaption(tester, 1);
+    await journey.waitForPublishedFocus(tester, 1, afterSequence: cursor);
+    expect(journey.focus.hadTransportRescue, isFalse);
+    expectRejectedRangeIsNotReady();
     await journey.swipeUp(tester);
     final focus = await journey.waitForPublishedFocus(
       tester,
       2,
       afterSequence: cursor,
-      cause: FeedFocusCause.transportRescue,
+      cause: FeedFocusCause.userNavigation,
     );
     await journey.waitForCaption(tester, 2);
     await journey.waitForFirstFrame(tester, focus);

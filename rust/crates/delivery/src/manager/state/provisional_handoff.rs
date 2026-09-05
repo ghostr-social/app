@@ -53,9 +53,8 @@ fn carries_handoff(authority: CurrentAuthority, transition: FocusTransition) -> 
         (authority, transition),
         (
             CurrentAuthority::Provisional,
-            FocusTransition::UserNavigation
-        ) | (CurrentAuthority::Provisional, FocusTransition::RosterChange)
-            | (CurrentAuthority::Canonical, FocusTransition::RosterChange)
+            FocusTransition::UserNavigation | FocusTransition::RosterChange
+        ) | (CurrentAuthority::Canonical, FocusTransition::RosterChange)
     )
 }
 

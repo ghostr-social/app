@@ -19,7 +19,7 @@ void _expectBoundedOrigins(_WarpUnsupportedHlsRescueDriver driver) {
   );
   expect(progressive.requestsFor('unsupported-hls-rescue'), isNotEmpty);
   expect(progressive.requests.length, lessThanOrEqualTo(24));
-  expect(progressive.maximumConcurrentResponses, lessThanOrEqualTo(4));
+  expect(progressive.maximumConcurrentResponses, lessThanOrEqualTo(1));
 }
 
 extension _WarpUnsupportedHlsRescueBounded on _WarpUnsupportedHlsRescueDriver {
@@ -45,7 +45,7 @@ extension _WarpUnsupportedHlsRescueBounded on _WarpUnsupportedHlsRescueDriver {
       isTrue,
     );
     expect(peakMountedPlayers, lessThanOrEqualTo(2));
-    expect(peakControllerCapacity, lessThanOrEqualTo(8));
+    expect(peakControllerCapacity, lessThanOrEqualTo(2));
     expect(
       videoPlaybackCapacityOf(graph.playback),
       emptyVideoPlaybackCapacitySnapshot,
@@ -63,7 +63,7 @@ extension _WarpUnsupportedHlsRescueBounded on _WarpUnsupportedHlsRescueDriver {
       'WARP_UNSUPPORTED_HLS failure=policy '
       'hls_requests=${progressive.encryptedHlsRequests.length} '
       'gateway_acquisitions=${runtime.hlsGateway.acquisitions.length} '
-      'rescue=${evidence.rescueFocus.rescue?.reason.name}:1 '
+      'navigation=${evidence.alternateFocus.cause.name} rescues=0 '
       'progressive_requests=${progressive.requests.length} '
       'player_attempts=${graph.playerStages.progressiveAttemptCount} '
       'player_peak=$peakMountedPlayers controller_peak=$peakControllerCapacity '

@@ -1,30 +1,15 @@
 use crate::gateway_fixture::progressive_delivery::ProgressiveDeliveryHarness;
 use crate::support::{ActiveRequest, ControlledOrigin};
-use std::time::Duration;
+use core::time::Duration;
 
-const TAIL_START: u64 = 262_144;
-
-pub async fn held_prefix_after_tail(origin: &mut ControlledOrigin) -> ActiveRequest {
+pub async fn held_prefix(origin: &mut ControlledOrigin) -> ActiveRequest {
     let deadline = tokio::time::Instant::now() + Duration::from_secs(5);
-    let mut prefix = None;
-    let mut tail_done = false;
     loop {
-        let request = next_until(origin, deadline, "initial prefix and tail").await;
+        let request = next_until(origin, deadline, "initial next-item prefix").await;
         if is_prefix(&request) {
-            if tail_done {
-                return request;
-            }
-            prefix = Some(request);
-            continue;
+            return request;
         }
-        let is_tail = request.path == "/p6.mp4" && request.range.start == TAIL_START;
         complete(&request).await;
-        if is_tail {
-            if let Some(prefix) = prefix {
-                return prefix;
-            }
-            tail_done = true;
-        }
     }
 }
 

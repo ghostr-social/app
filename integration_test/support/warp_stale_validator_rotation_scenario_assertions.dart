@@ -67,8 +67,9 @@ extension _WarpValidatorRotationAssertions on _WarpValidatorRotationDriver {
 
   void _expectQuiescent() {
     expect(_isQuiescent(), isTrue);
-    expect(peakMountedPlayers, lessThanOrEqualTo(8));
-    expect(peakControllerCapacity, lessThanOrEqualTo(8));
+    expect(peakMountedPlayers, lessThanOrEqualTo(2));
+    expect(peakControllerCapacity, lessThanOrEqualTo(2));
+    // A held old response remains in the fixture until it observes cancellation.
     expect(fixture.maximumConcurrentRequests, lessThanOrEqualTo(4));
     expect(fixture.totalRequestCount, lessThanOrEqualTo(20));
   }

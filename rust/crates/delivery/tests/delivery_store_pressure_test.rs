@@ -56,7 +56,7 @@ async fn delivery_waits_for_real_capacity_change_then_resumes_same_source() {
 
     harness
         .store
-        .set_storage_budget(16)
+        .set_storage_budget(24)
         .await
         .expect("valid test fixture");
     wait_for_complete(&harness.store).await;

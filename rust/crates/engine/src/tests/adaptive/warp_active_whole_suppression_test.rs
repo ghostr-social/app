@@ -49,7 +49,7 @@ fn changed_network_envelope_does_not_duplicate_an_active_whole_fetch() {
         )
         .with_whole_body_exhaustion(
             &post,
-            WholeBodyExhaustion::new(prior_cap, prior_cap + 1).expect("valid test fixture"),
+            WholeBodyExhaustion::new(prior_cap, prior_cap + 1).expect("fixture"),
         )
         .with_limits(PlannerLimits {
             network_burst_bytes: active_cap * 4,
@@ -66,7 +66,7 @@ fn changed_network_envelope_does_not_duplicate_an_active_whole_fetch() {
         action.node.kind,
         ActionKind::FetchWhole { .. } | ActionKind::Transform(_)
     )));
-    assert!(generated
+    assert!(!generated
         .actions
         .iter()
         .any(|action| matches!(action.node.kind, ActionKind::Hedge { .. })));

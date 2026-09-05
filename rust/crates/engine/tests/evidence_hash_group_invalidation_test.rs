@@ -2,7 +2,7 @@ use crate::catalog::{Catalog, CatalogEvidenceState};
 use crate::{DeliveryKind, PostId, VideoMeta};
 
 #[test]
-fn digest_mismatch_quarantines_only_the_exact_advertised_hash_group() {
+fn digest_mismatch_quarantines_only_the_failed_post_and_endpoint() {
     let digest = "a".repeat(64);
     let mut catalog = Catalog::new();
     let failed = PostId::new("failed");
@@ -18,46 +18,34 @@ fn digest_mismatch_quarantines_only_the_exact_advertised_hash_group() {
     catalog.retain(|post| post != &cached_peer);
     let identity = binding
         .transfer("https://failed.example/video.mp4")
-        .expect("valid test fixture");
+        .expect("fixture");
     let unrelated = "e".repeat(64);
     assert!(catalog
-        .quarantine_mirror_group(&identity, &unrelated, 19)
+        .quarantine_source(&identity, &unrelated, 19)
         .is_empty());
     let unrelated_post = PostId::new("unrelated");
     catalog.upsert(unrelated_post.clone(), meta("unrelated", Some(&unrelated)));
     assert!(!catalog
         .lookup(&unrelated_post)
-        .expect("valid test fixture")
+        .expect("fixture")
         .is_quarantined());
 
-    let invalidated = catalog.quarantine_mirror_group(&identity, &digest, 20);
-    assert_eq!(invalidated, vec![cached_peer, failed.clone(), peer.clone()]);
-    assert!(catalog
-        .lookup(&failed)
-        .expect("valid test fixture")
-        .is_quarantined());
-    assert!(catalog
-        .lookup(&peer)
-        .expect("valid test fixture")
-        .is_quarantined());
+    let invalidated = catalog.quarantine_source(&identity, &digest, 20);
+    assert_eq!(invalidated, vec![failed.clone()]);
+    assert!(catalog.lookup(&failed).expect("fixture").is_quarantined());
+    assert!(!catalog.lookup(&peer).expect("fixture").is_quarantined());
     assert!(!catalog
         .lookup(&lineage_only)
-        .expect("valid test fixture")
+        .expect("fixture")
         .is_quarantined());
-    assert!(!catalog
-        .lookup(&unhashed)
-        .expect("valid test fixture")
-        .is_quarantined());
+    assert!(!catalog.lookup(&unhashed).expect("fixture").is_quarantined());
     let late = PostId::new("late");
     catalog.upsert(late.clone(), meta("late", Some(&digest)));
-    assert!(catalog
-        .lookup(&late)
-        .expect("valid test fixture")
-        .is_quarantined());
+    assert!(!catalog.lookup(&late).expect("fixture").is_quarantined());
 }
 
 #[test]
-fn exact_hash_claims_and_quarantine_survive_catalog_restart() {
+fn source_rejections_survive_restart_without_poisoning_new_claims() {
     let digest = "c".repeat(64);
     let cached = PostId::new("cached");
     let mut before = Catalog::new();
@@ -65,30 +53,21 @@ fn exact_hash_claims_and_quarantine_survive_catalog_restart() {
     let json = before.evidence_state().to_json();
 
     let mut after = Catalog::new();
-    after.replace_evidence_state(
-        CatalogEvidenceState::from_json(&json).expect("valid test fixture"),
-        1,
-    );
+    after.replace_evidence_state(CatalogEvidenceState::from_json(&json).expect("fixture"), 1);
     let failed = PostId::new("failed");
     let binding = after.upsert(failed.clone(), meta("failed", Some(&digest)));
     let identity = binding
         .transfer("https://failed.example/video.mp4")
-        .expect("valid test fixture");
+        .expect("fixture");
 
-    assert_eq!(
-        after.quarantine_mirror_group(&identity, &digest, 2),
-        vec![cached, failed]
-    );
-    let restored = CatalogEvidenceState::from_json(&after.evidence_state().to_json())
-        .expect("valid test fixture");
+    assert_eq!(after.quarantine_source(&identity, &digest, 2), vec![failed]);
+    let restored =
+        CatalogEvidenceState::from_json(&after.evidence_state().to_json()).expect("fixture");
     let mut restarted = Catalog::new();
     restarted.replace_evidence_state(restored, 3);
     let late = PostId::new("late");
     restarted.upsert(late.clone(), meta("late", Some(&digest)));
-    assert!(restarted
-        .lookup(&late)
-        .expect("valid test fixture")
-        .is_quarantined());
+    assert!(!restarted.lookup(&late).expect("fixture").is_quarantined());
 }
 
 fn meta(host: &str, sha256: Option<&str>) -> VideoMeta {

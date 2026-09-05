@@ -31,7 +31,7 @@ Future<void> runWarpUnsupportedHlsRescueScenario(WidgetTester tester) async {
 typedef _UnsupportedHlsEvidence = ({
   PlaybackFocus failedFocus,
   VideoDeliverySnapshot failure,
-  PlaybackFocus rescueFocus,
+  PlaybackFocus alternateFocus,
   Duration before,
   Duration after,
 });

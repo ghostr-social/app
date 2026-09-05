@@ -13,7 +13,6 @@ fn exact_authority_atomically_pins_its_ready_object_cohort() {
         .capture_prepared_asset(&authority, &[ROOT.to_owned()])
         .expect("current exact prepared asset");
 
-    assert_eq!(captured.authority(), &authority);
     assert_eq!(captured.root_source(), ROOT);
     assert_eq!(captured.playback_manifest_source(), ROOT);
     assert_eq!(

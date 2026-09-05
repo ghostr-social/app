@@ -11,6 +11,7 @@ pub struct OriginGeneration {
     final_url: String,
     strong_etag: Option<String>,
     total_bytes: Option<u64>,
+    retention: ghostr_net::media_retention::MediaRetention,
 }
 
 impl HttpResponseEvidence {
@@ -46,7 +47,15 @@ impl OriginGeneration {
             final_url: response.url().to_string(),
             strong_etag,
             total_bytes,
+            retention: ghostr_net::media_retention::MediaRetention::from_headers(
+                response.headers(),
+                response.url(),
+            ),
         }
+    }
+
+    pub(super) fn retention(&self) -> ghostr_net::media_retention::MediaRetention {
+        self.retention
     }
 
     pub(super) fn strict(&self) -> Result<SourceGeneration> {

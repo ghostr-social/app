@@ -7,11 +7,11 @@ use crate::tests::adaptive_support::snapshot;
 use crate::{ActionId, ByteRange};
 
 #[test]
-fn inflight_fifth_reserve_does_not_launch_an_unrelated_continuation() {
-    let mut input = snapshot(6, 2_500_000, 20_000, 120);
+fn inflight_second_reserve_does_not_launch_an_unrelated_continuation() {
+    let mut input = snapshot(3, 2_500_000, 20_000, 120);
     input.commitment_ms = 20_000;
     input.candidates[0].present = vec![ByteRange::new(0, 3_750_000)];
-    for candidate in &mut input.candidates[1..=4] {
+    for candidate in &mut input.candidates[1..=1] {
         candidate.present = candidate
             .startup
             .as_ref()
@@ -19,8 +19,8 @@ fn inflight_fifth_reserve_does_not_launch_an_unrelated_continuation() {
             .ranges()
             .to_vec();
     }
-    input.candidates[5].player_preparation = PlayerPreparation::Unverified;
-    input.candidates[5].in_flight.push(InFlightAction::range(
+    input.candidates[2].player_preparation = PlayerPreparation::Unverified;
+    input.candidates[2].in_flight.push(InFlightAction::range(
         ActionId::new(9),
         ByteRange::new(0, 250_000),
         "https://origin.example/media",
@@ -33,10 +33,10 @@ fn inflight_fifth_reserve_does_not_launch_an_unrelated_continuation() {
             base.ready_reserve.target,
             base.ready_reserve.ordered_ready()
         ),
-        (5, 4)
+        (2, 1)
     );
     assert!(matches!(
-        base.ready_reserve.candidates[4].state,
+        base.ready_reserve.candidates[1].state,
         ReserveCandidateState::InFlight
     ));
 
@@ -55,6 +55,6 @@ fn inflight_fifth_reserve_does_not_launch_an_unrelated_continuation() {
     assert!(replay.reserve_progress_action_ids().is_empty());
     assert_ne!(
         decision.selected.expect("useful fallback").node.post,
-        input.candidates[5].post
+        input.candidates[2].post
     );
 }

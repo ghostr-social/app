@@ -5,12 +5,12 @@ use ghostr_engine::adaptive::StorageSnapshot;
 use std::collections::HashMap;
 
 #[test]
-fn measured_network_load_drives_warp_feedback_instead_of_estimated_capacity() {
+fn core_does_not_enable_adaptive_prices_when_measured_network_load_changes() {
     let at_target = plan(500_000);
     let above_target = plan(1_000_000);
 
     assert_eq!(network_price(&at_target), 0);
-    assert!(network_price(&above_target) > network_price(&at_target));
+    assert_eq!(network_price(&above_target), 0);
 }
 
 fn plan(measured_bytes_per_second: u64) -> crate::manager::plan::PlannedWork {

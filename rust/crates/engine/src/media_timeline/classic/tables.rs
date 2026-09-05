@@ -2,10 +2,13 @@ use super::super::boxes::Atom;
 use super::super::limits::ParserBudget;
 use super::super::TimelineError;
 
+mod dependencies;
 mod read;
+use dependencies::SampleDependencies;
 use read::{byte, count_at, require_table_extent, required, u32_at, u64_at, validate_count};
 
 pub(super) struct TrackTables {
+    pub(super) dependencies: SampleDependencies,
     pub(super) timescale: u32,
     pub(super) durations: Vec<u32>,
     pub(super) sizes: Vec<u32>,
@@ -37,6 +40,7 @@ impl TrackTables {
         };
         let chunk_samples = parse_chunks(&required(stbl, b"stsc")?, offsets.len(), budget)?;
         Ok(Self {
+            dependencies: SampleDependencies::parse(stbl, sample_count, budget)?,
             timescale,
             durations,
             sizes,
@@ -148,6 +152,9 @@ fn parse_chunks(
     for index in 0..count {
         budget.work(1)?;
         let offset = 8 + index * 12;
+        if u32_at(data, offset + 8)? != 1 {
+            return Err(TimelineError::Unsupported);
+        }
         entries.push(ChunkSamples {
             first_chunk: u32_at(data, offset)?,
             samples_per_chunk: u32_at(data, offset + 4)?,

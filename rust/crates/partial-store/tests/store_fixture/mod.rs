@@ -9,6 +9,7 @@ use std::path::{Path, PathBuf};
 mod contracts;
 pub(super) use contracts::exact_response;
 mod http_generation;
+pub(super) use http_generation::authorize;
 mod paths;
 mod response_commit;
 mod response_mode;

@@ -6,6 +6,7 @@ publish = false
 description = "Local HTTP gateway serving progressive and HLS playback, plus the debug web dashboard."
 
 [features]
+test = ["ghostr-delivery/test"]
 video-debug-web = ["ghostr-delivery/video-debug-web"]
 device-integration = []
 
@@ -39,6 +40,8 @@ tokio-stream = { workspace = true }
 # `ghostr-discovery` — a test-only edge, not the production one dropped in
 # commit 4d400c6.
 [dev-dependencies]
+ghostr-gateway = { path = ".", features = ["test"] }
+ghostr-net = { path = "../net", features = ["test"] }
 ghostr-delivery = { path = "../delivery", features = ["test"] }
 ghostr-discovery = { path = "../discovery" }
 ghostr-engine = { path = "../engine", features = ["test"] }

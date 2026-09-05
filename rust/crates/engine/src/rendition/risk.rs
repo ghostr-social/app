@@ -40,7 +40,7 @@ fn playing_risk(observation: PlaybackObservation, target: BufferTarget) -> Buffe
     if buffered <= target.emergency_horizon() {
         return BufferRisk::Critical;
     }
-    if buffered < target.steady() {
+    if !target.fits_retention_limit() || buffered < target.steady() {
         return BufferRisk::Recovering;
     }
     BufferRisk::Comfortable

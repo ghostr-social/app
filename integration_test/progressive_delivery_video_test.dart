@@ -26,7 +26,7 @@ void main() {
     await journey.pumpFor(tester, const Duration(milliseconds: 500));
     final admissions = await journey.playbackAdmissions();
 
-    expect(journey.headsRemainBlocked, isTrue);
+    expect(journey.playbackBypassedHeadResponses, isTrue);
     expect(
       journey.currentOriginBytes - currentBytes,
       lessThanOrEqualTo(192 * 1024),

@@ -20,7 +20,7 @@ class GhostrApp extends StatefulWidget {
   const GhostrApp({required this.dependencies, this.feedFocus, super.key});
 
   final AppDependencies dependencies;
-  final FeedFocusPort? feedFocus;
+  final FeedFocusSink? feedFocus;
 
   @override
   State<GhostrApp> createState() => _GhostrAppState();

@@ -2,6 +2,7 @@ use ghostr_engine::adaptive::{CandidateSnapshot, PlayableRange};
 use ghostr_engine::ByteRange;
 
 pub(super) fn prioritize(candidate: &mut CandidateSnapshot, wanted: ByteRange) {
+    let wanted = read_ahead(candidate, wanted);
     let mut surrounding = Vec::new();
     let mut overlap_gain = 0_u64;
     for playable in core::mem::take(&mut candidate.playable_ranges) {
@@ -61,4 +62,16 @@ fn demanded_gain(wanted: ByteRange, bitrate_bps: u64, overlap_gain: u64) -> u64 
         .saturating_mul(8_000)
         .div_ceil(bitrate_bps.max(1))
         .max(1)
+}
+
+fn read_ahead(candidate: &CandidateSnapshot, wanted: ByteRange) -> ByteRange {
+    let Some(total) = candidate.total_bytes else {
+        return wanted;
+    };
+    let end = wanted
+        .start
+        .saturating_add(ghostr_engine::playback::PLAYBACK_SLICE_BYTES)
+        .max(wanted.end)
+        .min(total);
+    ByteRange::new(wanted.start, end)
 }

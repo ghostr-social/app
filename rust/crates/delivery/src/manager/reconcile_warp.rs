@@ -17,6 +17,7 @@ use ghostr_engine::adaptive::{DecisionOutcome, ResourceCost};
 use ghostr_engine::origin_model::RequestMethod;
 use ghostr_engine::ActionId;
 
+#[derive(Clone, Copy)]
 enum CancelCommit {
     Cancelled,
     Missing,

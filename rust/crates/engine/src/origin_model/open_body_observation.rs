@@ -21,11 +21,6 @@ impl OpenBodyObservation {
         Self::new(query, observed_at_ms, OriginOutcome::Cancelled)
     }
 
-    pub fn with_throughput_bps(mut self, value: Option<u64>) -> Self {
-        self.throughput_bps = value;
-        self
-    }
-
     pub(super) fn transport_observation(&self) -> OriginObservation {
         let mut item = match self.outcome {
             OriginOutcome::Success => {

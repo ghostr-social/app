@@ -2,6 +2,7 @@
 
 mod delivery_fixture;
 
+use core::time::Duration;
 use delivery_fixture::evidence::DeliveryEvidence as _;
 use delivery_fixture::full_disk::{discard, limits, spaced_store};
 use delivery_fixture::items::{focus_now, seed_range, sized_item};
@@ -9,7 +10,6 @@ use delivery_fixture::options::DeliveryOptions;
 use delivery_fixture::start_harness_with_store;
 use delivery_fixture::wait::wait_for_file_with_limit;
 use std::sync::Arc;
-use std::time::Duration;
 
 const UNREACHABLE: &str = "http://127.0.0.1:9/video.mp4";
 

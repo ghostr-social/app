@@ -2,7 +2,6 @@ use super::gate::MediaRequestGate;
 use super::redirect::{self, AdmittedHop, RedirectContext};
 use super::response::MediaResponse;
 use crate::outbound_media_client::MediaHttpRequests;
-use crate::public_media_address::validate_url;
 use anyhow::{ensure, Context as _, Result};
 use core::time::Duration;
 use ghostr_engine::adaptive::PreemptionAuthority;
@@ -28,6 +27,7 @@ pub struct MediaRequest {
     builder: RequestBuilder,
     route: RequestRoute,
     method: Option<Method>,
+    maximum_body: Option<u64>,
 }
 
 pub struct AdmittedMediaRequest {
@@ -58,7 +58,7 @@ impl RequestRoute {
             gate,
             authority,
             priority,
-            public_redirects_only: validate_url(&url).is_ok(),
+            public_redirects_only: requires_public_redirects(&url),
         })
     }
 }
@@ -69,6 +69,7 @@ impl MediaRequest {
             builder,
             route,
             method: None,
+            maximum_body: None,
         }
     }
 
@@ -82,6 +83,11 @@ impl MediaRequest {
         self
     }
 
+    pub fn body_limit(mut self, maximum_bytes: u64) -> Self {
+        self.maximum_body = Some(maximum_bytes);
+        self
+    }
+
     /// # Errors
     ///
     /// Returns an error when the request is invalid or request capacity cannot be acquired.
@@ -90,18 +96,23 @@ impl MediaRequest {
         let mut request = request.context("build media request")?;
         validate_request(&request, &self.route.authority)?;
         *request.method_mut() = self.method.unwrap_or(Method::GET);
-        let lease = self
+        let maximum = super::body_limit::maximum(&request, self.maximum_body)?;
+        let mut lease = self
             .route
             .gate
             .acquire(self.route.authority, self.route.priority)
             .await?;
+        lease.reserve_body(maximum)?;
         Ok(AdmittedMediaRequest {
             hop: AdmittedHop::new(client, request, lease),
             redirects: RedirectContext::new(
                 self.route.client,
                 self.route.gate,
                 self.route.priority,
-                self.route.public_redirects_only,
+                super::redirect::RedirectPolicy {
+                    public_only: self.route.public_redirects_only,
+                    maximum_body: maximum,
+                },
             ),
         })
     }
@@ -139,4 +150,13 @@ impl AdmittedMediaRequest {
     pub async fn send_with_redirect_deadline(self, deadline: Instant) -> Result<MediaResponse> {
         redirect::send(self.hop, self.redirects, Some(deadline)).await
     }
+}
+
+fn requires_public_redirects(url: &Url) -> bool {
+    let host = url.host_str().unwrap_or_default();
+    let address = host.trim_start_matches('[').trim_end_matches(']');
+    host != "localhost"
+        && !address
+            .parse::<core::net::IpAddr>()
+            .is_ok_and(|ip| ip.is_loopback())
 }

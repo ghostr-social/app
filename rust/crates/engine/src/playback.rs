@@ -4,11 +4,16 @@
 //! never be mistaken for a network stall.
 
 mod buffer;
+mod continuation;
+mod deficit;
+mod indexed;
+pub use indexed::ContinuationConditions;
 mod network;
 mod session;
 
 pub use buffer::{AdaptiveBufferPolicy, BufferTarget};
 use core::time::Duration;
+pub(crate) use deficit::{BufferScenario, UsableArrival};
 pub use network::{EstimateConfidence, NetworkConditions};
 pub use session::{PlaybackObservationSequence, PlaybackSession, PlaybackStatus};
 
@@ -44,13 +49,6 @@ impl MediaConsumption {
             bitrate_bits_per_second,
             playback_rate_milli,
         }
-    }
-
-    fn bits_per_second(self) -> u64 {
-        let scaled = u128::from(self.bitrate_bits_per_second)
-            .saturating_mul(u128::from(self.playback_rate_milli))
-            / 1_000;
-        scaled.min(u128::from(u64::MAX)) as u64
     }
 }
 

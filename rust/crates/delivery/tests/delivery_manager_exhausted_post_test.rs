@@ -24,7 +24,12 @@ async fn delivery_manager_stops_retrying_a_post_with_no_working_source() {
         .handle
         .update_focus(focus_now(vec![doomed.clone()], 0, 0));
     wait_for("the doomed post to go terminal", || {
-        attempts(&log) > 0 && !harness.posts.contains("aa11")
+        attempts(&log) > 0
+            && harness
+                .posts
+                .videos()
+                .iter()
+                .any(|video| video.id == "aa11" && !video.status.is_servable())
     })
     .await;
     tokio::time::sleep(Duration::from_millis(150)).await;

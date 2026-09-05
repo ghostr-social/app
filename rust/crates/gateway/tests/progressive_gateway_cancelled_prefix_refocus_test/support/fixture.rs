@@ -1,9 +1,9 @@
 use crate::gateway_fixture::progressive_delivery::ProgressiveDeliveryHarness;
 use crate::support::ControlledOrigin;
+use core::time::Duration;
 use ghostr_delivery::delivery_events::FocusItem;
 use ghostr_engine::catalog::Catalog;
 use ghostr_engine::{DeliveryKind, PostId, VideoMeta};
-use std::time::Duration;
 
 pub const TOTAL: u64 = 293_999;
 

@@ -26,7 +26,11 @@ pub async fn report_rejected(
     let attempt =
         PlayerPreparationAttempt::try_new(generation, generation, 1).expect("valid test fixture");
     let disposition = send(handle, authority, attempt, (1, State::Initializing)).await;
-    assert_eq!(disposition, PlayerPreparationDisposition::Rejected);
+    assert_eq!(
+        disposition,
+        PlayerPreparationDisposition::Rejected,
+        "stale preparation is rejected"
+    );
 }
 
 async fn report(
@@ -43,7 +47,11 @@ async fn report(
 }
 
 fn assert_applied(disposition: PlayerPreparationDisposition) {
-    assert_eq!(disposition, PlayerPreparationDisposition::Applied);
+    assert_eq!(
+        disposition,
+        PlayerPreparationDisposition::Applied,
+        "current preparation is applied"
+    );
 }
 
 async fn send(

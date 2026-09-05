@@ -35,7 +35,7 @@ fn catalog_switches_to_the_safe_representation_without_merging_mirrors() {
         1_000,
         PlaybackPhase::NetworkStalled,
     )
-    .expect("valid test fixture");
+    .expect("fixture");
     let target =
         AdaptiveBufferPolicy::default().target(network, MediaConsumption::new(6_000_000, 1_000));
 
@@ -49,12 +49,12 @@ fn catalog_switches_to_the_safe_representation_without_merging_mirrors() {
     assert!(!switched.matches_or_derives_from(&advertised));
     let transformed = switched
         .derive_transform(TransformKind::Remux, &"b".repeat(64))
-        .expect("valid test fixture");
+        .expect("fixture");
     assert!(transformed.derives_from(&switched));
     assert_eq!(transformed.source_representation(), first.representation());
     assert!(transformed.matches_source_meta(&advertised));
     assert_eq!(
-        catalog.lookup(&post).expect("valid test fixture").meta,
+        catalog.lookup(&post).expect("fixture").meta,
         low.meta().clone()
     );
     assert_eq!(
@@ -72,9 +72,9 @@ fn catalog_switches_to_the_safe_representation_without_merging_mirrors() {
         .is_none());
     let identity = switched
         .transfer("https://low.example/video.mp4")
-        .expect("valid test fixture");
+        .expect("fixture");
     assert!(catalog
-        .quarantine_mirror_group(&identity, "low-digest", 1)
+        .quarantine_source(&identity, "low-digest", 1)
         .contains(&post));
     assert!(catalog
         .select_rendition(&post, network, observation, target)
@@ -95,5 +95,5 @@ fn rendition(name: &str, mirror: &str, bitrate: u64) -> VideoRendition {
         },
         Some(bitrate),
     )
-    .expect("valid test fixture")
+    .expect("fixture")
 }

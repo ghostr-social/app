@@ -57,11 +57,11 @@ final class FutureHlsDecoderFixture {
     prepared.onHlsFirstFrameRendered?.call(prepared.hlsAuthority!);
   }
 
-  Future<void> promoteFourthAndReturn(WidgetTester tester) async {
+  Future<void> promoteNextAndReturn(WidgetTester tester) async {
     final cubit = tester.element(find.byType(PageView)).read<FeedCubit>();
     cubit.pageChanged(1);
     await tester.pumpAndSettle();
-    render('h3');
+    render('h1');
     cubit.pageChanged(0);
     await tester.pumpAndSettle();
   }

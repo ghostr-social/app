@@ -49,6 +49,8 @@ void main() {
     cubit.pageChanged(2);
     await tester.runAsync(() => focus.published('p2'));
     await fixture.settle(tester);
+    _renderFrames(fixture, frames);
+    await fixture.settle(tester);
 
     expect(
       telemetry.activations.map((item) => item.videoId.value),

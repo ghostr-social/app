@@ -36,9 +36,8 @@ impl ControlledOrigin {
                 .expect("valid test fixture");
         });
         let base_url = format!("http://{address}");
-        let url = format!("{base_url}/video.mp4");
         Self {
-            url,
+            url: format!("{base_url}/video.mp4"),
             base_url,
             requests: observed,
         }
@@ -90,6 +89,7 @@ fn reply(status: StatusCode, length: u64, range: Option<String>, body: Body) -> 
     let mut builder = Response::builder()
         .status(status)
         .header(header::CONTENT_TYPE, "video/mp4")
+        .header(header::CACHE_CONTROL, "public, max-age=3600")
         .header(header::ACCEPT_RANGES, "bytes")
         .header(header::ETAG, "\"fixture-concurrency\"")
         .header(header::CONTENT_LENGTH, length);

@@ -3,6 +3,9 @@ use super::limits::ParserBudget;
 use super::{normalize, MediaTimeline, TimedRange, TimelineError};
 use crate::ByteRange;
 
+mod closure;
+mod window;
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct StartupFootprint {
     ranges: Vec<ByteRange>,
@@ -58,27 +61,15 @@ impl StartupFootprint {
         if !timeline.classic_video || !timeline.movie_top_level || timeline.file_types.is_empty() {
             return None;
         }
-        let (start, end) = first_interval(&timeline.media)?;
-        let media = interval_ranges(&timeline.media, start, end);
+        let end = closure::startup_end(&timeline.media)?;
+        let media = closure::ranges(&timeline.media, end)?;
         let headers = media_headers(&media, &timeline.media_data)?;
         let mut ranges = timeline.file_types.clone();
         ranges.push(timeline.movie?);
         ranges.extend(headers);
         ranges.extend(media);
-        Self::new(
-            ranges,
-            end.saturating_sub(start),
-            StartupProvenance::ClassicMp4V1,
-        )
+        Self::new(ranges, end, StartupProvenance::ClassicMp4V1)
     }
-}
-
-fn interval_ranges(media: &[TimedRange], start: u64, end: u64) -> Vec<ByteRange> {
-    media
-        .iter()
-        .filter(|range| range.start_ms < end && range.end_ms > start)
-        .map(|range| range.bytes)
-        .collect()
 }
 
 fn media_headers(media: &[ByteRange], data: &[super::boxes::MediaData]) -> Option<Vec<ByteRange>> {
@@ -125,7 +116,7 @@ pub(super) fn assemble(
             _ => {}
         }
     }
-    Ok(MediaTimeline {
+    let mut timeline = MediaTimeline {
         inspected: normalize(input.inspected),
         metadata: normalize(metadata),
         file_types: normalize(file_types),
@@ -137,8 +128,11 @@ pub(super) fn assemble(
             .saturating_add(input.fragmented_markers),
         media_data: input.media_data,
         classic_video: input.classic_video,
+        startup: None,
         media: input.media,
-    })
+    };
+    timeline.startup = StartupFootprint::from_timeline(&timeline);
+    Ok(timeline)
 }
 
 fn top_level_count(atoms: &[Atom<'_>], kind: &[u8; 4]) -> usize {
@@ -151,14 +145,4 @@ fn top_level_count(atoms: &[Atom<'_>], kind: &[u8; 4]) -> usize {
 fn valid_file_type(atom: &Atom<'_>) -> bool {
     let payload = atom.payload();
     atom.start == 0 && atom.is_top_level() && payload.len() >= 8
-}
-
-fn first_interval(media: &[TimedRange]) -> Option<(u64, u64)> {
-    let start = media.iter().map(|range| range.start_ms).min()?;
-    let end = media
-        .iter()
-        .filter(|range| range.start_ms == start)
-        .map(|range| range.end_ms)
-        .min()?;
-    Some((start, end.max(start.saturating_add(1))))
 }

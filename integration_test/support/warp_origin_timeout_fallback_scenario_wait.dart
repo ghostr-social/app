@@ -8,6 +8,7 @@ extension _OriginTimeoutFallbackWait on _OriginTimeoutFallbackScenario {
     while (watch.elapsed < const Duration(seconds: 25)) {
       final evidence = _fallbackEvidence();
       if (evidence != null) return evidence;
+      await journey.sampleDecisions();
       await journey.pumpFor(tester, const Duration(milliseconds: 70));
     }
     await journey.reportSchedulingEvidence();
@@ -69,7 +70,13 @@ extension _OriginTimeoutFallbackWait on _OriginTimeoutFallbackScenario {
     final ready = _readyNext();
     final primary = _gets('next');
     final fallback = _gets('next-rescue');
+    final coverage = ProgressiveOriginCoverage.fromRequests(
+      fallback,
+      objectLength: journey.resources.origin.objectLength,
+    );
     return 'Origin timeout did not produce a player-verified fallback; '
+        'coverage=exact:${coverage.isExact} network:${coverage.networkBytes} '
+        'unique:${coverage.uniqueBytes} duplicate:${coverage.duplicateBytes}, '
         'gate=${primaryGate.isReached}/${primaryGate.isReleased}/'
         '${primaryGate.timedOut}, ready=${ready?.authority}, '
         'attempts=${attempts.map((item) => '${item.authority}:'

@@ -11,6 +11,18 @@ impl Catalog {
             .entries
             .get(binding.post())
             .map_or(1, |entry| entry.evidence_clock_ms.saturating_add(1));
-        self.learn_timeline_observation_for(binding, timeline, observed_at_ms)
+        let source = self
+            .entries
+            .get(binding.post())
+            .and_then(|entry| entry.meta.urls.first())
+            .and_then(|url| binding.transfer(url));
+        self.learn_timeline_observation_for(
+            binding,
+            TimelineObservation {
+                timeline,
+                source,
+                observed_at_ms,
+            },
+        )
     }
 }

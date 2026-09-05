@@ -7,7 +7,7 @@ void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
   testWidgets(
-    'real Android feed preserves playback through a ready burst',
+    'real Android feed settles a rapid burst with bounded players',
     runWarpReadyBurstScenario,
   );
 }

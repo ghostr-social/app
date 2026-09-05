@@ -33,7 +33,7 @@ void main() {
               failureReporter: reporter,
             ),
           ),
-          delivery: FeedDeliveryDependencies(
+          delivery: FeedDeliveryDependencies.withReadyRescue(
             deliveryUpdates: delivery,
             preparationUpdates: preparation,
           ),

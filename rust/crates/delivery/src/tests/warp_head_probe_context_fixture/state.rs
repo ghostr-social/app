@@ -4,6 +4,7 @@ use ghostr_engine::{DataUsageLevel, DeliveryKind, EngineParams, PostId, VideoMet
 
 const CURRENT_SOURCE: &str = "https://fixture-current.example/video.mp4";
 
+#[derive(Clone, Copy)]
 enum TargetPosition {
     Current,
     Ahead,

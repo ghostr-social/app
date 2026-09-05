@@ -4,8 +4,10 @@
 mod assertions;
 mod delivery_fixture;
 mod range_fixture;
+#[path = "delivery_cancellation_waste_test/transport.rs"]
+mod transport;
 
-use assertions::{assert_cancelled, assert_transport_stops, pending_whole_sequence};
+use assertions::{assert_cancelled, pending_whole_sequence};
 use core::sync::atomic::Ordering;
 use core::time::Duration;
 use delivery_fixture::items::{focus_now, sized_item};
@@ -15,6 +17,7 @@ use delivery_fixture::start_harness;
 use delivery_fixture::wait::wait_for_ranges;
 use ghostr_engine::{DataUsageLevel, EngineParams};
 use range_fixture::cancellation::BodyKind;
+use transport::assert_transport_stops;
 
 const PREFIX: usize = 1_024;
 const TOTAL: u64 = 128 * 1_024;

@@ -8,7 +8,7 @@ use gateway_fixture::progressive_journey_origin::ProgressiveJourneyOrigin;
 use ghostr_delivery::manager::DeliveryTuning;
 
 #[tokio::test]
-async fn deferred_probe_retries_after_the_active_body_fails() {
+async fn failed_current_body_retries_without_advisory_head() {
     let origin = ProgressiveJourneyOrigin::with_deferred_probe_and_failed_body().await;
     let harness =
         ProgressiveDeliveryHarness::start_with_tuning("ghostr-deferred-probe-retry", fast_retry());
@@ -16,19 +16,26 @@ async fn deferred_probe_retries_after_the_active_body_fails() {
 
     tokio::time::timeout(Duration::from_secs(2), async {
         loop {
-            let heads = origin
+            let bodies = origin
                 .requests()
                 .iter()
-                .filter(|request| request.method == Method::HEAD)
+                .filter(|request| request.method == Method::GET)
                 .count();
-            if heads >= 2 {
+            if bodies >= 2 {
                 break;
             }
             tokio::time::sleep(Duration::from_millis(5)).await;
         }
     })
     .await
-    .expect("failed deferred body releases the probe for retry");
+    .expect("failed current body retries GET");
+    assert!(
+        origin
+            .requests()
+            .iter()
+            .all(|request| request.method != Method::HEAD),
+        "current playback bypasses advisory HEAD"
+    );
 }
 
 fn fast_retry() -> DeliveryTuning {

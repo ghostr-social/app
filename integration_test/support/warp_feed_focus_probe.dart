@@ -6,10 +6,10 @@ import 'device_playback_probe.dart';
 
 typedef WarpFeedFocusGeneration = BigInt? Function();
 
-final class WarpFeedFocusProbe implements FeedFocusPort {
+final class WarpFeedFocusProbe implements FeedFocusSink {
   WarpFeedFocusProbe(this._delegate, this._playback, [this._generation]);
 
-  final FeedFocusPort _delegate;
+  final FeedFocusSink _delegate;
   final DevicePlaybackProbe _playback;
   final WarpFeedFocusGeneration? _generation;
   final _published = <String, PlaybackFocus>{};
@@ -18,6 +18,9 @@ final class WarpFeedFocusProbe implements FeedFocusPort {
   final _deliveries = <String, PlaybackDeliveryId>{};
 
   List<PlaybackFocus> get occurrences => List.unmodifiable(_occurrences);
+
+  @override
+  void clearFocus() => _delegate.clearFocus();
 
   bool get hadTransportRescue => _occurrences.any(
     (focus) => focus.cause == FeedFocusCause.transportRescue,

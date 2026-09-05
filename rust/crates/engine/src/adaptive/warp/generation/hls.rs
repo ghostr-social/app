@@ -37,6 +37,10 @@ pub(super) fn add(
     let Some((stage, source)) = candidate.pending() else {
         return;
     };
+    let depth = if stage.is_manifest() { 8 } else { 2 };
+    if !(0..=depth).contains(&candidate.feed_offset.value()) {
+        return;
+    }
     let Some(commitment) = commitment(builder, candidate, stage, policy) else {
         return;
     };

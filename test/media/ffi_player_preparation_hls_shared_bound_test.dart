@@ -11,7 +11,7 @@ import '../support/drain_test_microtasks.dart';
 import '../support/playback_authority_fixture.dart';
 
 void main() {
-  test('progressive and HLS attempts share the eight-attempt bound', () async {
+  test('progressive and HLS attempts share the two-attempt bound', () async {
     final blocked = <Completer<FfiPlayerPreparationDisposition>>[];
     final sent = <FfiPlayerPreparationReport>[];
     final feedback = FfiPlayerPreparationFeedbackPort(
@@ -26,17 +26,17 @@ void main() {
       monotonicMicros: () => 1,
     );
 
-    for (var index = 0; index < 4; index += 1) {
+    for (var index = 0; index < 1; index += 1) {
       feedback.prepare(testPlaybackAuthority(postId: 'p-$index')).begin();
     }
-    for (var index = 0; index < 5; index += 1) {
+    for (var index = 0; index < 2; index += 1) {
       feedback.prepareHls(_hlsAuthority(index)).begin();
     }
 
-    expect(blocked, hasLength(8));
+    expect(blocked, hasLength(2));
     expect(
       sent.where((report) => report.assetId.startsWith('hls-v1:')),
-      hasLength(4),
+      hasLength(1),
     );
     for (final completion in blocked) {
       completion.complete(FfiPlayerPreparationDisposition.applied);

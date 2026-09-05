@@ -22,3 +22,5 @@ mod media_timeline;
 mod playback;
 mod rendition;
 mod video_rendition_validation_test;
+
+mod media_timeline_dependency_support;

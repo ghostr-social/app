@@ -19,6 +19,12 @@ impl PartialRangeStore {
     pub async fn finalize(&self, key: &str, advertised: Option<&str>) -> Result<Completion> {
         let _update = self.update_key(key).await?;
         let mut entries = self.entries.lock().await;
+        if let Some(verdict) = self.judge_transient(key, advertised).await {
+            if verdict.is_err() {
+                self.discard(&mut entries, key).await?;
+            }
+            return verdict;
+        }
         if let Some(response) = self.session_response(key).await {
             return session::finalize(self, &mut entries, key, advertised, &response).await;
         }

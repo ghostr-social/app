@@ -16,6 +16,7 @@ mod ledger;
 mod observation;
 mod persistence;
 mod playback_evidence;
+mod source_rejection;
 pub use persistence::CatalogEvidenceState;
 pub use playback_evidence::PlaybackEvidence;
 pub use renditions::RenditionSelection;
@@ -117,8 +118,7 @@ pub struct Catalog {
     entries: HashMap<PostId, CatalogEntry>,
     reliability: crate::evidence::FieldReliabilityModel,
     reliability_revision: u64,
-    digest_claims: HashMap<String, BTreeSet<PostId>>,
-    quarantined_digests: BTreeSet<String>,
+    quarantined_sources: BTreeSet<source_rejection::SourceRejection>,
     next_generation: RepresentationGeneration,
 }
 
@@ -129,26 +129,7 @@ impl Catalog {
     }
 
     pub fn retain(&mut self, mut keep: impl FnMut(&PostId) -> bool) {
-        let removed: Vec<_> = self
-            .entries
-            .iter()
-            .filter(|(post, _)| !keep(post))
-            .map(|(post, entry)| {
-                (
-                    post.clone(),
-                    entry.meta.sha256.clone(),
-                    entry.renditions.advertised_digest().map(str::to_owned),
-                )
-            })
-            .collect();
-        for (post, active, advertised) in removed {
-            if active.as_deref().map(str::to_ascii_lowercase)
-                != advertised.as_deref().map(str::to_ascii_lowercase)
-            {
-                self.update_digest_claim(&post, active.as_deref(), advertised.as_deref());
-            }
-            self.entries.remove(&post);
-        }
+        self.entries.retain(|post, _| keep(post));
     }
 
     fn allocate_generation(&mut self) -> RepresentationGeneration {
@@ -171,7 +152,7 @@ impl Catalog {
         url: &str,
     ) -> Option<TransferIdentity> {
         let entry = self.lookup(post)?;
-        (!entry.is_quarantined())
+        (!entry.is_quarantined() && !self.source_rejected(post, &entry.meta, url))
             .then(|| entry.binding.transfer(url))
             .flatten()
     }
@@ -192,6 +173,7 @@ mod renditions;
 mod representation;
 pub use renditions::RenditionQualityEvidence;
 mod timeline;
+pub use timeline::TimelineObservation;
 
 #[cfg(test)]
 #[path = "catalog_axiom_test.rs"]

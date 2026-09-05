@@ -21,7 +21,10 @@ async fn media_probe_rejects_response_headers_above_the_media_limit() {
         .expect_err("oversized HEAD headers must be rejected");
     let request = String::from_utf8(request.await.expect("origin request")).expect("HTTP request");
 
-    assert!(error.to_string().contains("headers exceed byte limit"));
+    assert!(
+        format!("{error:#}").contains("headers exceed byte limit"),
+        "oversized headers rejected: {error:#}"
+    );
     assert!(request.starts_with("HEAD "));
     assert!(stats.failure_ratio(&host_of(&url).expect("origin host")) > 0.0);
 }

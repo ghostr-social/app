@@ -10,6 +10,7 @@ final class WarpDecisionRecord {
     required this.observedAtMs,
     required this.networkThroughputBps,
     required this.plannerNetworkRateBytesPerSecond,
+    this.requestOccupancy,
     this.hasWarpDecision = false,
     this.additionalRequestSlotDemanded = false,
   });
@@ -27,6 +28,7 @@ final class WarpDecisionRecord {
       observedAtMs: replay.observedAtMs,
       networkThroughputBps: replay.throughputBps,
       plannerNetworkRateBytesPerSecond: _warpPlannerNetworkRate(json),
+      requestOccupancy: _warpPlannerRequestOccupancy(json),
       hasWarpDecision: json['warp_decision'] != null,
       additionalRequestSlotDemanded: _warpAdditionalSlotDemand(json),
     );
@@ -40,6 +42,7 @@ final class WarpDecisionRecord {
   final int observedAtMs;
   final int networkThroughputBps;
   final int? plannerNetworkRateBytesPerSecond;
+  final WarpRequestOccupancy? requestOccupancy;
   final bool hasWarpDecision;
   final bool additionalRequestSlotDemanded;
 }

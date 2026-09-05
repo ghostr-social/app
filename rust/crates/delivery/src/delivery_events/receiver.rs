@@ -1,5 +1,5 @@
 use super::{
-    ClearRequest, CommandReceiver, DeliveryCandidate, DeliveryCommand, DeliveryHandle,
+    ClearRequest, ClearScope, CommandReceiver, DeliveryCandidate, DeliveryCommand, DeliveryHandle,
     MailboxReceiver,
 };
 use crate::evaluation::EvaluationLedger;
@@ -14,9 +14,21 @@ impl DeliveryHandle {
     ///
     /// Returns an error when the manager is unavailable or the acknowledgement is interrupted.
     pub async fn clear(&self) -> anyhow::Result<()> {
+        self.reset(ClearScope::All).await
+    }
+
+    /// Releases private playback state while retaining public disk media.
+    ///
+    /// # Errors
+    /// Returns an error when the manager is unavailable or cleanup fails.
+    pub async fn reset_playback_access(&self) -> anyhow::Result<()> {
+        self.reset(ClearScope::PlaybackAccess).await
+    }
+
+    async fn reset(&self, scope: ClearScope) -> anyhow::Result<()> {
         let (reply, result) = oneshot::channel();
         self.clears
-            .send(reply)
+            .send(ClearRequest { reply, scope })
             .await
             .map_err(|error| anyhow::anyhow!("delivery manager is unavailable: {error}"))?;
         result

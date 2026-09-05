@@ -15,7 +15,11 @@ extension _WarpLongSessionQuiescence on _WarpLongSessionDriver {
     expect(
       _isQuiescent(),
       isTrue,
-      reason: _timeoutEvidence(timeout, 'quiescence'),
+      reason:
+          '${_timeoutEvidence(timeout, 'quiescence')} '
+          'capacity=${videoPlaybackCapacityOf(graph.playback)} '
+          'unreleased=${_stageEvidence(_begunAttempts.where((attempt) => attempt.releasedAt == null).toList())} '
+          'origin=${origin.requests.where((request) => request.outcome != ProgressiveOriginRequestOutcome.completed && request.outcome != ProgressiveOriginRequestOutcome.clientCanceled).map(_requestSummary).join('|')}',
     );
   }
 

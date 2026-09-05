@@ -60,10 +60,6 @@ pub struct ClaimedAdmission {
 }
 
 impl ClaimedAdmission {
-    pub const fn admission(&self) -> Admission {
-        self.admission
-    }
-
     pub const fn block_reason(&self) -> Option<AdmissionBlockReason> {
         self.block_reason
     }
@@ -198,3 +194,6 @@ const fn blocked(reason: AdmissionBlockReason) -> ClaimedAdmission {
         block_reason: Some(reason),
     }
 }
+
+#[cfg(any(test, feature = "test"))]
+mod test_support;

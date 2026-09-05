@@ -18,13 +18,20 @@ impl CatalogEntry {
         self.ledger.assessment(source, now_ms)
     }
 
-    pub(super) fn quarantine_integrity(&mut self, digest: &str, origin: &str, observed_at_ms: u64) {
-        self.quarantined = true;
+    pub(super) fn record_source_mismatch(&mut self, digest: &str, source: &str, at_ms: u64) {
         self.timeline = None;
         self.tail_timeline_needed = false;
-        self.ledger
-            .quarantine_digest(digest, origin, observed_at_ms);
-        self.evidence_clock_ms = self.evidence_clock_ms.max(observed_at_ms);
+        self.ledger.record(Evidence::new(
+            EvidenceValue::IntegrityMatch {
+                digest: digest.to_ascii_lowercase(),
+                matches: false,
+            },
+            EvidenceSource::hash(source),
+            at_ms,
+            Confidence::certain(),
+            EvidenceScope::url(source),
+        ));
+        self.evidence_clock_ms = self.evidence_clock_ms.max(at_ms);
     }
 
     pub(super) fn record_nostr_metadata(

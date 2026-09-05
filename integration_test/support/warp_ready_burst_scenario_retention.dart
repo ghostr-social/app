@@ -1,95 +1,64 @@
 part of 'warp_ready_burst_scenario.dart';
 
 Future<void> runWarpAdaptiveWarmBackScenario(WidgetTester tester) async {
-  final opened = await _openFeed(tester);
-  final ready = await _waitForReady(tester, opened);
-  final burst = await _consumeReady(tester, opened, ready);
-  final retained = _pageControllers(tester, opened.journey, burst.focuses);
-  final next = await _consumeReplenished(tester, opened, ready, burst);
-  _expectMountedControllers(tester, retained);
-  final reverse = await _reversePlayback(tester, opened.journey, next);
-  await _verifyWarmReuse(tester, opened.journey, retained, reverse.focuses);
-}
-
-Map<PlaybackVideoId, VideoPlayerController> _pageControllers(
-  WidgetTester tester,
-  WarpFeedPlaybackJourney journey,
-  Iterable<PlaybackFocus> focuses,
-) {
-  return {
-    for (final focus in focuses.map(
-      (focus) => _reportWarmTarget(journey, focus),
-    ))
-      focus.videoId: _pageController(tester, focus.videoId),
-  };
-}
-
-PlaybackFocus _reportWarmTarget(
-  WarpFeedPlaybackJourney journey,
-  PlaybackFocus focus,
-) {
-  final state = journey.cubit.state as FeedLoaded;
-  final post = state.posts.singleWhere(
-    (post) => post.id.value == focus.videoId.value,
-  );
-  debugPrint(
-    'WARP_WARM_TARGET id=${focus.videoId.value} '
-    'caption=${post.caption} media=${post.media.remoteUrl}',
-  );
-  return focus;
-}
-
-VideoPlayerController _pageController(
-  WidgetTester tester,
-  PlaybackVideoId videoId,
-) {
-  final page = find.byKey(ValueKey(videoId.value), skipOffstage: false);
-  final player = find.descendant(
-    of: page,
-    matching: find.byType(VideoPlayer, skipOffstage: false),
-    skipOffstage: false,
-  );
-  expect(player, findsOneWidget, reason: videoId.value);
-  return tester.widget<VideoPlayer>(player).controller;
-}
-
-void _expectMountedControllers(
-  WidgetTester tester,
-  Map<PlaybackVideoId, VideoPlayerController> retained,
-) {
-  final mounted = tester
-      .widgetList<VideoPlayer>(find.byType(VideoPlayer, skipOffstage: false))
-      .map((player) => player.controller);
-  for (final entry in retained.entries) {
-    expect(
-      mounted.any((controller) => identical(controller, entry.value)),
-      isTrue,
-      reason: entry.key.value,
+  final journey = await _openFeed(tester);
+  await _waitForCached(tester, journey, 0);
+  for (var index = 1; index <= 3; index += 1) {
+    final cursor = journey.focusCursor;
+    await journey.swipeUp(tester);
+    final focus = await journey.waitForPublishedFocus(
+      tester,
+      index,
+      afterSequence: cursor,
     );
+    await _expectMoving(tester, journey, focus);
+    if (index < 3) await _waitForCached(tester, journey, index);
   }
+  const replayIds = ['current', 'next', 'third'];
+  await journey.waitForNativeStoreCoverage(tester, replayIds);
+  final before = await journey.waitForOriginQuiescence(tester, replayIds);
+  final reverse = await journey.swipeBackward(
+    tester,
+    count: 3,
+    afterSequence: journey.focusCursor,
+    cadence: deviceRapidSwipeCadence,
+  );
+  await _expectMoving(tester, journey, reverse.focuses.last);
+  final after = await journey.waitForOriginQuiescence(tester, replayIds);
+  for (final id in replayIds) {
+    expect(
+      after[id]!.bytes,
+      before[id]!.bytes,
+      reason: '$id replay uses cached media',
+    );
+    final coverage = journey.resources.origin.coverageFor(id);
+    expect(coverage.isComplete, isTrue, reason: id);
+    expect(coverage.duplicateBytes, 0, reason: id);
+  }
+  debugPrint('WARP_REVERSE origin_before=$before origin_after=$after');
 }
 
-Future<void> _verifyWarmReuse(
+Future<void> _waitForCached(
   WidgetTester tester,
   WarpFeedPlaybackJourney journey,
-  Map<PlaybackVideoId, VideoPlayerController> retained,
-  List<PlaybackFocus> reverse,
+  int index,
 ) async {
-  final finalFocus = reverse.last;
-  final controller = _pageController(tester, finalFocus.videoId);
-  expect(
-    identical(controller, retained[finalFocus.videoId]),
-    isTrue,
-    reason: finalFocus.videoId.value,
+  const ids = ['current', 'next', 'third'];
+  final delivery = journey.focus.deliveryForEvent(journey.events[index].id);
+  final watch = Stopwatch()..start();
+  while (watch.elapsed < const Duration(seconds: 15)) {
+    final stored = journey.graph.deliveryProbe.observations
+        .where((entry) => entry.snapshot.deliveryId == delivery)
+        .lastOrNull
+        ?.snapshot;
+    if (stored?.bytesPresent ==
+            BigInt.from(journey.resources.origin.objectLength) &&
+        journey.resources.origin.coverageFor(ids[index]).isComplete) {
+      return;
+    }
+    await journey.pumpFor(tester, const Duration(milliseconds: 25));
+  }
+  fail(
+    'Cache did not complete: ${journey.originRequestEvidence([ids[index]])}',
   );
-  expect(controller.value.isInitialized, isTrue);
-  final position = journey.telemetry.probe.latestPositionFor(finalFocus)!;
-  await journey.pumpFor(tester, const Duration(seconds: 1));
-  expect(
-    journey.telemetry.probe.latestPositionFor(finalFocus),
-    greaterThan(position),
-  );
-  expect(journey.hadPlaybackError, isFalse);
-  expect(journey.focus.hadTransportRescue, isFalse);
-  expect(find.text('Video unavailable'), findsNothing);
 }

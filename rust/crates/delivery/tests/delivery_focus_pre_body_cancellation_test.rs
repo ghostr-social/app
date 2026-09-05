@@ -20,9 +20,8 @@ async fn reverse_focus_cancels_a_future_response_before_its_first_body_byte() {
         production_geometry_parallel_options(),
     );
     seed_prefix(&harness, &items).await;
-    for (generation, current) in (1..=4).zip(0..=3) {
-        fixture::focus_and_wait(&harness, &items, current, generation).await;
-    }
+    // The target is the immediate next item under the two-item payload window.
+    fixture::focus_and_wait(&harness, &items, 5, 4).await;
     let request = tokio::time::timeout(Duration::from_secs(10), held.next())
         .await
         .expect("future request starts");

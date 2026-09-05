@@ -15,7 +15,7 @@ async fn hls_feedback_requires_the_exact_live_segmented_asset_revision() {
     let tracked = TrackedItems::new();
     tracked.insert("stream".to_owned(), meta);
     let context = PlayerPreparationContext {
-        store: progressive.store.clone(),
+        store: std::sync::Arc::clone(&progressive.store),
         capabilities: progressive.capabilities.clone(),
         delivery: runtime.delivery(),
         tracked,

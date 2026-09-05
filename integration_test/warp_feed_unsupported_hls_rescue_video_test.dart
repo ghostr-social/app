@@ -7,7 +7,7 @@ void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
   testWidgets(
-    'encrypted HLS fails closed and rescues to a decoded alternate',
+    'encrypted HLS fails closed and user navigation plays the next video',
     runWarpUnsupportedHlsRescueScenario,
   );
 }

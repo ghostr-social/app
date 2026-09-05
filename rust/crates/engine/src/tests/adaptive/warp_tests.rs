@@ -58,6 +58,8 @@ mod retrieval_request_immediate_bytes_test;
 mod warp_active_whole_suppression_test;
 #[path = "warp_exhausted_unknown_whole_test.rs"]
 mod warp_exhausted_unknown_whole_test;
+#[path = "warp_past_hash_duplicate_range_test.rs"]
+mod warp_past_hash_duplicate_range_test;
 #[path = "warp_planner_cancelling_suppression_test.rs"]
 mod warp_planner_cancelling_suppression_test;
 #[path = "warp_planner_commit_atomicity_test.rs"]
@@ -92,5 +94,7 @@ mod warp_range_noncompliant_generation_test;
 mod warp_range_noncompliant_unknown_size_generation_test;
 #[path = "warp_range_noncompliant_unobserved_generation_test.rs"]
 mod warp_range_noncompliant_unobserved_generation_test;
+#[path = "warp_request_envelope_fixture.rs"]
+mod warp_request_envelope_fixture;
 #[path = "warp_unknown_whole_probe_classification_test.rs"]
 mod warp_unknown_whole_probe_classification_test;

@@ -15,56 +15,47 @@ async fn a_new_policy_rewrite_reconciles_an_older_cleanup_debt_first() {
     let binding = catalog.upsert(PostId::new("clip"), meta());
     let identity = binding
         .transfer("https://cdn.example/video")
-        .expect("valid test fixture");
+        .expect("fixture");
     fixture
         .store
         .bind_representation(binding.clone())
         .await
-        .expect("valid test fixture");
+        .expect("fixture");
+    crate::tests::store_fixture::authorize(&fixture.store, &identity, "generation").await;
     fixture
         .store
         .write_range("clip", 0, b"abcdefghijkl")
         .await
-        .expect("valid test fixture");
+        .expect("fixture");
     fixture
         .store
         .set_total_len("clip", 12)
         .await
-        .expect("valid test fixture");
+        .expect("fixture");
     tokio::fs::write(fixture.root.join("clip.part.evict"), b"abcdefgh")
         .await
-        .expect("valid test fixture");
+        .expect("fixture");
     tokio::fs::write(
         fixture.root.join("clip.evict.intent"),
         br#"{"version":1,"retained_bytes":8}"#,
     )
     .await
-    .expect("valid test fixture");
+    .expect("fixture");
     std::fs::set_permissions(&fixture.root, std::fs::Permissions::from_mode(0o500))
-        .expect("valid test fixture");
+        .expect("fixture");
     let reopened = crate::tests::store_fixture::reopened(&fixture);
-    reopened
-        .store
-        .load_existing()
-        .await
-        .expect("valid test fixture");
+    reopened.store.load_existing().await.expect("fixture");
     std::fs::set_permissions(&fixture.root, std::fs::Permissions::from_mode(0o700))
-        .expect("valid test fixture");
+        .expect("fixture");
     reopened
         .store
         .bind_representation(binding)
         .await
-        .expect("valid test fixture");
+        .expect("fixture");
     let manifest = fixture.root.join("clip.ranges.json");
-    let stable = tokio::fs::read(&manifest)
-        .await
-        .expect("valid test fixture");
-    tokio::fs::remove_file(&manifest)
-        .await
-        .expect("valid test fixture");
-    tokio::fs::create_dir(&manifest)
-        .await
-        .expect("valid test fixture");
+    let stable = tokio::fs::read(&manifest).await.expect("fixture");
+    tokio::fs::remove_file(&manifest).await.expect("fixture");
+    tokio::fs::create_dir(&manifest).await.expect("fixture");
 
     reopened
         .store
@@ -74,17 +65,13 @@ async fn a_new_policy_rewrite_reconciles_an_older_cleanup_debt_first() {
 
     assert_eq!(reopened.store.used_bytes().await, 12);
     assert!(!fixture.root.join("clip.part.evict").exists());
-    tokio::fs::remove_dir(&manifest)
-        .await
-        .expect("valid test fixture");
-    tokio::fs::write(manifest, stable)
-        .await
-        .expect("valid test fixture");
+    tokio::fs::remove_dir(&manifest).await.expect("fixture");
+    tokio::fs::write(manifest, stable).await.expect("fixture");
     let action = reopened
         .store
         .reserve_action(&identity, 1, 8)
         .await
-        .expect("valid test fixture");
+        .expect("fixture");
     reopened.store.release_action(&action).await;
     crate::tests::store_fixture::discard(&fixture.root);
 }

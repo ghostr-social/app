@@ -39,7 +39,7 @@ async fn queued_headers_survive_focus_pruning_until_the_attempt_is_terminal() {
     assert!(!fixture.worker.catalog_contains_for_test(&fixture.post));
     tokio::fs::remove_dir_all(fixture.root)
         .await
-        .expect("valid test fixture");
+        .expect("fixture");
 }
 
 async fn wait_for_prune(fixture: &mut TimelineManagerFixture) {

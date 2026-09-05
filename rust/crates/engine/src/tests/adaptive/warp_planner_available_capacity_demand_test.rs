@@ -23,7 +23,7 @@ fn independent_requests(decision: &crate::adaptive::WarpPlanningDecision) -> usi
         .search
         .chosen_plan
         .as_ref()
-        .expect("valid test fixture")
+        .expect("fixture")
         .action_ids;
     decision
         .generated
@@ -48,7 +48,7 @@ fn scenario() -> Scenario {
     input.candidates[0].retrieval_eligible = false;
     for candidate in &mut input.candidates {
         candidate.present.push(candidate.playable_ranges[0].bytes);
-        candidate.view_probability = ViewProbability::new(1.0).expect("valid test fixture");
+        candidate.view_probability = ViewProbability::new(1.0).expect("fixture");
     }
     let base = AdaptivePlayabilityPolicy.plan(&input);
     assert_eq!(base.mode, ControlMode::Normal);
@@ -73,7 +73,7 @@ fn decision(scenario: &Scenario, request_tokens: u16) -> crate::adaptive::WarpPl
 fn planner() -> WarpPlanner {
     WarpPlanner::new(WarpPlannerConfig {
         beam: BeamConfig::new(4, 32, 256, u64::MAX),
-        ..WarpPlannerConfig::default()
+        ..WarpPlannerConfig::default().with_lookahead()
     })
 }
 

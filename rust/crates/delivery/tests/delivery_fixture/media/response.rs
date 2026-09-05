@@ -6,6 +6,7 @@ pub(super) fn full(bytes: &[u8]) -> Response {
     Response::builder()
         .status(StatusCode::OK)
         .header(header::CONTENT_TYPE, "video/mp4")
+        .header(header::CACHE_CONTROL, "public, max-age=3600")
         .header(header::CONTENT_LENGTH, bytes.len())
         .header(header::ACCEPT_RANGES, "bytes")
         .header(header::ETAG, "\"fixture-media\"")
@@ -21,6 +22,7 @@ pub(super) fn partial(bytes: &[u8], start: u64, end: u64) -> Response {
     Response::builder()
         .status(StatusCode::PARTIAL_CONTENT)
         .header(header::CONTENT_TYPE, "video/mp4")
+        .header(header::CACHE_CONTROL, "public, max-age=3600")
         .header(header::CONTENT_LENGTH, slice.len())
         .header(header::ETAG, "\"fixture-media\"")
         .header(

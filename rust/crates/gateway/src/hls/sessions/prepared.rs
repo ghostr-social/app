@@ -1,9 +1,7 @@
 use super::{HlsSession, HlsSessionId, HlsSessions};
 use crate::hls::playback::HlsPlaybackRequest;
 use anyhow::{Context as _, Result};
-use ghostr_delivery::segmented::{
-    HlsPreparedAssetAuthority, PreparedHlsPlaybackAsset, SegmentedCache,
-};
+use ghostr_delivery::segmented::{PreparedHlsPlaybackAsset, SegmentedCache};
 use reqwest::Url;
 use tokio::time::Instant;
 
@@ -14,6 +12,8 @@ pub(crate) enum HlsPlaybackBinding {
 }
 
 impl HlsSessions {
+    /// # Errors
+    /// Rejects stale preparation authority, mismatched sources, or exhausted capacity.
     pub async fn acquire_prepared(
         &self,
         cache: &SegmentedCache,
@@ -24,13 +24,6 @@ impl HlsSessions {
             .context("prepared HLS authority is unavailable")?;
         self.admit(HlsSession::prepared(request.sources, asset, Instant::now()))
             .await
-    }
-
-    pub async fn authority(&self, id: &HlsSessionId) -> Option<HlsPreparedAssetAuthority> {
-        self.active_binding(id)
-            .await?
-            .prepared
-            .map(|asset| asset.authority().clone())
     }
 
     pub(crate) async fn playback_binding(&self, id: &HlsSessionId) -> Option<HlsPlaybackBinding> {

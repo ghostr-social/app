@@ -20,7 +20,6 @@ async fn invalidated_authority_cannot_reopen_but_its_pinned_session_stays_cohere
         .acquire_prepared(&delivery.segmented, request(&old, &source))
         .await
         .expect("current prepared session");
-    assert_eq!(sessions.authority(&old_session).await.as_ref(), Some(&old));
 
     let generation = delivery
         .segmented

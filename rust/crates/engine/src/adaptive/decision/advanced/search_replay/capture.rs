@@ -47,6 +47,7 @@ fn recorded_prices(value: crate::adaptive::ResourcePrices) -> super::RecordedRes
 
 fn replay_mode(value: SearchReplayMode) -> RecordedSearchReplayMode {
     match value {
+        SearchReplayMode::Core => RecordedSearchReplayMode::Core,
         SearchReplayMode::Beam => RecordedSearchReplayMode::Beam,
         SearchReplayMode::GreedyExpansion => RecordedSearchReplayMode::GreedyExpansion,
         SearchReplayMode::GreedyLatency => RecordedSearchReplayMode::GreedyLatency,

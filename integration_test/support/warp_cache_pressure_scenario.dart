@@ -18,8 +18,10 @@ import 'warp_feed_player_stage_probe.dart';
 import 'warp_feed_production_graph.dart';
 import 'warp_feed_surface.dart';
 import 'warp_long_session_scenario.dart';
+import 'warp_native_request_bounds.dart';
 
 part 'warp_cache_pressure_scenario_assertions.dart';
+part 'warp_cache_pressure_scenario_diagnostics.dart';
 part 'warp_cache_pressure_scenario_configuration.dart';
 part 'warp_cache_pressure_scenario_driver.dart';
 part 'warp_cache_pressure_scenario_quiescence.dart';

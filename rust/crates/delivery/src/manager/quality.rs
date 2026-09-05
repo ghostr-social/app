@@ -7,7 +7,8 @@ use core::time::Duration;
 use ghostr_engine::catalog::RenditionSelection;
 use ghostr_engine::host_stats::{host_of, HostStats};
 use ghostr_engine::playback::{
-    AdaptiveBufferPolicy, BufferTarget, MediaConsumption, NetworkConditions, PlaybackObservation,
+    AdaptiveBufferPolicy, BufferTarget, ContinuationConditions, MediaConsumption,
+    NetworkConditions, PlaybackObservation,
 };
 use ghostr_engine::representation::RepresentationBinding;
 use ghostr_engine::PostId;
@@ -64,11 +65,26 @@ fn evidence(
     let session = state.playback().session()?;
     let post = session.post().clone();
     let observation = state.playback().observation()?;
-    let host = active_host(state, stats, &post)?;
-    let network = network(stats, &host, observed_at_ms)?;
+    let network = network_for(state, stats, &post, observed_at_ms)?;
     let bitrate = state.catalog().estimated_bitrate(&post, state.params());
     let media = MediaConsumption::new(bitrate, observation.playback_rate_milli());
-    let target = AdaptiveBufferPolicy::default().target(network, media);
+    let remaining = remaining_media(state, &post, observation);
+    let policy = AdaptiveBufferPolicy::default();
+    let target = state
+        .catalog()
+        .lookup(&post)
+        .and_then(|entry| entry.timeline())
+        .and_then(|timeline| {
+            policy.target_for_timeline(
+                timeline,
+                ContinuationConditions {
+                    observation,
+                    network,
+                },
+                &[],
+            )
+        })
+        .unwrap_or_else(|| policy.target_for(network, media, remaining));
     Some(SelectionEvidence {
         post,
         network,
@@ -83,6 +99,15 @@ fn active_host(state: &DeliveryState, stats: &HostStats, post: &PostId) -> Optio
     host_of(&source)
 }
 
+pub(crate) fn network_for(
+    state: &DeliveryState,
+    stats: &HostStats,
+    post: &PostId,
+    observed_at_ms: u64,
+) -> Option<NetworkConditions> {
+    network(stats, &active_host(state, stats, post)?, observed_at_ms)
+}
+
 fn network(stats: &HostStats, host: &str, observed_at_ms: u64) -> Option<NetworkConditions> {
     let estimate = stats
         .host_throughput(host)
@@ -91,9 +116,25 @@ fn network(stats: &HostStats, host: &str, observed_at_ms: u64) -> Option<Network
         .expected_ttfb(host)
         .or_else(|| stats.overall_ttfb())
         .unwrap_or(Duration::from_millis(250));
-    Some(NetworkConditions::from_estimate(
-        estimate,
-        ttfb,
-        observed_at_ms,
-    ))
+    let origin = NetworkConditions::from_estimate(estimate, ttfb, observed_at_ms);
+    Some(stats.overall_throughput().map_or(origin, |shared| {
+        origin.constrained_by(NetworkConditions::from_estimate(
+            shared,
+            stats.overall_ttfb().unwrap_or(ttfb),
+            observed_at_ms,
+        ))
+    }))
+}
+
+fn remaining_media(
+    state: &DeliveryState,
+    post: &PostId,
+    observation: PlaybackObservation,
+) -> Duration {
+    state
+        .catalog()
+        .lookup(post)
+        .and_then(|entry| entry.meta.duration_ms)
+        .map(|duration| Duration::from_millis(duration).saturating_sub(observation.position()))
+        .unwrap_or(Duration::MAX)
 }

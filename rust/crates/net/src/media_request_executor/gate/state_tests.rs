@@ -54,7 +54,12 @@ impl Fixture {
             MediaRequestLimits::try_new(global, per_authority).expect("valid test fixture");
         Self {
             state: GateState::new(limits),
-            gate: MediaRequestGate::new(limits),
+            gate: MediaRequestGate::new(
+                limits,
+                crate::internet_allowance::InternetAllowance::memory(
+                    crate::internet_allowance::InternetDataLimit::Unlimited,
+                ),
+            ),
         }
     }
 

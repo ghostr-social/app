@@ -33,7 +33,8 @@ async fn focus(
     let update = generated_focus(visible, current, generation);
     assert_eq!(
         harness.handle.update_focus(update),
-        FocusAdmission::Accepted
+        FocusAdmission::Accepted,
+        "refocus generation is accepted"
     );
     wait_for_plan(&harness.handle, after, |plan| {
         plan.focus_generation == Some(generation) && plan.current.as_ref() == Some(&expected)

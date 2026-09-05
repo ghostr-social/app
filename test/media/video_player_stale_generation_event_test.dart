@@ -8,6 +8,8 @@ import 'package:video_player_platform_interface/video_player_platform_interface.
 
 import '../support/recording_playback_telemetry_port.dart';
 import '../support/playback_delivery_fixture.dart';
+import '../support/playback_authority_fixture.dart';
+import '../support/video_player_surface_pump.dart';
 import '../support/scripted_video_player_platform.dart';
 
 void main() {
@@ -26,6 +28,7 @@ void main() {
             videoId: PlaybackVideoId.parse('clip'),
             isActive: true,
             playbackDeliveryId: testCanonicalPlaybackDeliveryId,
+            hlsAuthority: testHlsPlaybackAuthority(),
           ),
         ),
       ),
@@ -37,6 +40,8 @@ void main() {
     await tester.pump();
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
+    await settleVideoPlayerTasks(tester);
+    expect(telemetry.activations, hasLength(2));
     final replacement = telemetry.activations.last;
     final count = telemetry.observations.length;
 

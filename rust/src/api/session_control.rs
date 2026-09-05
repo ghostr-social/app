@@ -38,6 +38,14 @@ pub async fn ffi_reset_nostr_session(
         .transpose()
         .map_err(|_| NostrSessionResetError::InvalidExpectedPublicKey)?;
     let engine = registry::engine_if_running().ok_or(NostrSessionResetError::EngineNotStarted)?;
+    engine
+        .gateway
+        .reset_playback_access()
+        .await
+        .map_err(|error| {
+            log::warn!("Media session reset failed: {error}");
+            NostrSessionResetError::EngineNotStarted
+        })?;
     engine.discovery.reset_session(expected_account).await;
     Ok(())
 }

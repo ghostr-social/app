@@ -27,6 +27,7 @@ pub(super) fn configuration(root: std::path::PathBuf) -> GatewayConfiguration {
         relays: Vec::new(),
         max_parallel_downloads: 1,
         max_storage_bytes: 1_024,
+        internet_data_limit: ghostr_net::internet_allowance::InternetDataLimit::Unlimited,
         network_status: ghostr_delivery::delivery_events::DeliveryNetworkStatus::unavailable(),
         device_integration_origin: None,
     }

@@ -75,8 +75,6 @@ impl From<HlsGenerationPolicy> for RecordedHlsGenerationPolicy {
     }
 }
 
-impl RecordedHlsGenerationPolicy {}
-
 impl From<crate::adaptive::PromotionGenerationPolicy> for RecordedPromotionGenerationPolicy {
     fn from(value: crate::adaptive::PromotionGenerationPolicy) -> Self {
         match value {
@@ -88,8 +86,6 @@ impl From<crate::adaptive::PromotionGenerationPolicy> for RecordedPromotionGener
     }
 }
 
-impl RecordedPromotionGenerationPolicy {}
-
 impl From<OriginAdmissionGenerationPolicy> for RecordedOriginAdmissionGenerationPolicy {
     fn from(value: OriginAdmissionGenerationPolicy) -> Self {
         match value {
@@ -99,10 +95,10 @@ impl From<OriginAdmissionGenerationPolicy> for RecordedOriginAdmissionGeneration
     }
 }
 
-impl RecordedOriginAdmissionGenerationPolicy {}
-
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
 struct RecordedPlannerConfig {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    profile: Option<crate::adaptive::warp::PlannerProfile>,
     beam_depth: u64,
     beam_width: u64,
     beam_expansions: u64,
@@ -148,7 +144,5 @@ fn is_legacy_promotion_generation(value: &RecordedPromotionGenerationPolicy) -> 
 fn is_legacy_origin_admission_generation(value: &RecordedOriginAdmissionGenerationPolicy) -> bool {
     *value == RecordedOriginAdmissionGenerationPolicy::LegacyUnclassified
 }
-
-impl RecordedPlannerReplayCapsule {}
 
 pub(in crate::adaptive::decision) use capture::capture;

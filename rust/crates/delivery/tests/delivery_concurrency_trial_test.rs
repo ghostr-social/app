@@ -2,6 +2,7 @@ mod delivery_fixture;
 #[path = "delivery_concurrency_trial_test/support.rs"]
 mod support;
 
+use core::num::NonZeroUsize;
 use core::time::Duration;
 use delivery_fixture::concurrency_origin::{ActiveRequest, ControlledOrigin};
 use delivery_fixture::items::{focus_now, sized_item};
@@ -10,7 +11,6 @@ use delivery_fixture::playback::{playing_at, wait_for_admissions};
 use delivery_fixture::stats::seed_overall_throughput;
 use delivery_fixture::{start_harness_at, temp_directory, DeliveryHarness};
 use ghostr_engine::EngineParams;
-use std::num::NonZeroUsize;
 use support::{
     decision_sequence, disjoint, expect_no_request, next_request, next_request_while_streaming,
     wait_for_bytes, wait_for_parallel_demand_after,
@@ -61,7 +61,10 @@ async fn positive_warp_demand_starts_one_parallel_disjoint_range() {
 }
 
 async fn finish_trial(harness: &DeliveryHarness, first: ActiveRequest, second: ActiveRequest) {
-    assert_eq!(second.path, "/current.mp4");
+    assert_eq!(
+        second.path, "/current.mp4",
+        "parallel trial remains on the active item"
+    );
     assert!(
         disjoint(first.range.clone(), second.range.clone()),
         "parallel ranges overlap: {:?} and {:?}",

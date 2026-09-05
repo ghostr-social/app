@@ -8,12 +8,12 @@ extension _WarpLongSessionAssertions on _WarpLongSessionDriver {
       handoffs - _unsettledBurstHandoffs - transportRescues,
     );
     expect(visited, hasLength(_longSessionPostCount));
-    expect(peakMountedPlayers, lessThanOrEqualTo(8));
-    expect(peakControllerCapacity, lessThanOrEqualTo(8));
+    expect(peakMountedPlayers, lessThanOrEqualTo(2));
+    expect(peakControllerCapacity, lessThanOrEqualTo(2));
     expect(unavailableWasVisible, isFalse);
     expect(activePlaceholderWasVisible, isFalse);
-    expect(transportRescues, greaterThanOrEqualTo(1));
-    expect(graph.focus.hadTransportRescue, isTrue);
+    expect(transportRescues, 0);
+    expect(graph.focus.hadTransportRescue, isFalse);
   }
 
   bool _isQuiescent() {
@@ -34,7 +34,7 @@ extension _WarpLongSessionAssertions on _WarpLongSessionDriver {
     expect(attempts.length, greaterThan(8));
     expect(attempts.every((attempt) => attempt.failedAt == null), isTrue);
     expect(attempts.every((attempt) => attempt.releasedAt != null), isTrue);
-    expect(_peakPreparations(attempts), lessThanOrEqualTo(8));
+    expect(_peakPreparations(attempts), lessThanOrEqualTo(2));
     expect(find.byType(VideoPlayer, skipOffstage: false), findsNothing);
     _expectOriginBounded();
     debugPrint(
