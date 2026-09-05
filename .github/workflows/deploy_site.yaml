@@ -1,0 +1,105 @@
+name: Deploy landing page
+
+# Publishes site/ to Cloudflare (https://ghostr.social) as Workers static
+# assets. Pull requests only validate the Worker config; pushes to main deploy.
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'site/**'
+      - '.github/workflows/deploy_site.yaml'
+  pull_request:
+    paths:
+      - 'site/**'
+      - '.github/workflows/deploy_site.yaml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Serialize deploys (never cancel one midway); PR checks queue per ref so
+# they cannot displace a pending main deploy.
+concurrency:
+  group: >-
+    ${{ github.event_name == 'pull_request'
+        && format('deploy-site-{0}', github.ref)
+        || 'deploy-site' }}
+  cancel-in-progress: false
+
+env:
+  SITE_DIR: site
+  NODE_VERSION: '22'
+  SITE_URL: https://ghostr.social/
+
+defaults:
+  run:
+    working-directory: site
+
+jobs:
+  check:
+    name: Validate Worker config
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v5
+
+      - name: Install Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: ${{ env.SITE_DIR }}/package-lock.json
+
+      - name: Install wrangler
+        run: npm ci
+
+      - name: Dry-run deploy
+        run: npm run check
+
+  deploy:
+    name: Deploy to Cloudflare
+    needs: check
+    # Only main ever reaches production, including manual dispatches.
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v5
+
+      - name: Install Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: ${{ env.SITE_DIR }}/package-lock.json
+
+      - name: Install wrangler
+        run: npm ci
+
+      - name: Require Cloudflare credentials
+        if: env.CLOUDFLARE_API_TOKEN == ''
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          echo "::error::The CLOUDFLARE_API_TOKEN repository secret is not set; see site/README.md." >&2
+          exit 1
+
+      - name: Deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: npm run deploy
+
+      - name: Verify the site answers
+        run: |
+          for attempt in 1 2 3 4 5 6; do
+            if curl --fail --silent --show-error --location --max-time 15 \
+              --output /dev/null "$SITE_URL"; then
+              echo "$SITE_URL is serving."
+              exit 0
+            fi
+            echo "Attempt $attempt: $SITE_URL not serving yet; retrying."
+            sleep 10
+          done
+          echo "$SITE_URL did not answer after the deploy." >&2
+          exit 1

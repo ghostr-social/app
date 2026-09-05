@@ -56,3 +56,7 @@ app.*.map.json
 # WARP device-evidence raw logs (small summaries are committed)
 /evidence/warp/*/stdout.log
 /evidence/warp/*/logcat.log
+
+# Landing page (site/) tooling
+/site/node_modules/
+/site/.wrangler/

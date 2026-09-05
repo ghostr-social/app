@@ -58,7 +58,7 @@ implementation pack has not been supplied or found in the workspace.
 | `make test-coverage` | Pass; 1,890 tests |
 | `make coverage-summary` | Pass; 98.80% (14,741/14,920), all 493 modules and executable-source representation |
 | `make native-test` | Previous pass: 2,374 tests; rerun includes cancellation before EOF |
-| `make axiom` | Previous pass: 3,408 Rust files; final rerun in progress |
+| `make axiom` | Pass; all 3,409 Rust files, Clippy, rustdoc, and semantic policies |
 | Complete physical matrix, offline restart, HOME/foreground | Pass; 26 matrix cases + two offline phases + one lifecycle case |
 | Normal ARM64 app | Build/ABI check, installation, cold launch, and visible welcome screen pass |
 

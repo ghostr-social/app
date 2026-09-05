@@ -92,6 +92,7 @@ all 493 per-file gates and executable-source representation passing. The complet
 physical matrix passes 26 cases, followed by two offline restart phases and a
 real HOME/foreground case. The normal ARM64 app is installed and cold-launched
 successfully; the welcome screen was visually checked, with no account configured.
-Final native tests and Axiom are pending. The [audit](WARP_V3_IMPLEMENTATION_STATUS.md)
+Axiom passes all 3,409 Rust files, including Clippy, rustdoc, and semantic policies.
+The final native test rerun is pending. The [audit](WARP_V3_IMPLEMENTATION_STATUS.md)
 records source attestation and command results. No measured optimization gain or
 Internet-service reliability guarantee is claimed.

@@ -1,0 +1,22 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  // Static landing page for https://ghostr.social, served as Workers static
+  // assets (no Worker script). Deploy with `npm run deploy` or via
+  // .github/workflows/deploy_site.yaml.
+  "name": "ghostr-social-site",
+  "account_id": "100ff75ac970d200a6eb0241235da854",
+  "compatibility_date": "2026-08-25",
+  "assets": {
+    "directory": "./public",
+    "html_handling": "auto-trailing-slash",
+    "not_found_handling": "404-page"
+  },
+  // Custom Domains: Cloudflare creates the DNS records and certificates for
+  // these hostnames in the ghostr.social zone on deploy.
+  "routes": [
+    { "pattern": "ghostr.social", "custom_domain": true },
+    { "pattern": "www.ghostr.social", "custom_domain": true }
+  ],
+  "workers_dev": false,
+  "preview_urls": false
+}

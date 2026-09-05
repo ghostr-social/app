@@ -6,7 +6,16 @@ on:
   push:
     branches: [ main ]
     tags: [ 'v*' ]
+    # Landing-page changes deploy through deploy_site.yaml and must not cut
+    # an Android release. GitHub does not evaluate path filters for tag
+    # pushes, so explicit `v*` tags still build and publish.
+    paths-ignore:
+      - 'site/**'
+      - '.github/workflows/deploy_site.yaml'
   pull_request:
+    paths-ignore:
+      - 'site/**'
+      - '.github/workflows/deploy_site.yaml'
 
 permissions:
   contents: read

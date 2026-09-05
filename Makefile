@@ -143,7 +143,8 @@ HAWK_REVISION_SHORT := 98efa9f
 	native-coverage-contract-test rust rust-no-clean gen icons run run-fast \
 	run-fast-profile android-unit-tests android-debug-apk android-debug-apk-check \
 	android-release-apk android-release-apk-check android-agent-avd-create \
-	android-agent-avd-run build build-fast install help
+	android-agent-avd-run build build-fast install help \
+	site-dev site-check site-deploy
 
 test-coverage: ## Run Flutter tests and collect Dart coverage.
 	@ulimit -n "$(FLUTTER_TEST_OPEN_FILES)"; \
@@ -373,3 +374,12 @@ install: ## Rename, push, and install the Android release APK.
 help: ## List all commands and their descriptions.
 	@printf 'Available commands:\n'
 	@awk 'BEGIN {FS = ":.*## "} /^[[:alnum:]_.-]+:.*## / {printf "  %-31s %s\n", $$1, $$2}' $(MAKEFILE_LIST) | sort
+
+site-dev: ## Serve the ghostr.social landing page locally.
+	cd site && npm ci && npm run dev
+
+site-check: ## Validate the landing page Worker config without deploying.
+	cd site && npm ci && npm run check
+
+site-deploy: ## Deploy the landing page to Cloudflare (ghostr.social).
+	cd site && npm ci && npm run deploy
