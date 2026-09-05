@@ -2,6 +2,7 @@ use super::{Duration, Instant, TrafficEvent, TransferKey};
 
 pub(super) struct PendingTransfer {
     host: String,
+    pub(super) resumed: bool,
     opened: Option<(Duration, Instant)>,
     pub(super) bytes: u64,
     pub(super) last_at: Instant,
@@ -12,6 +13,7 @@ impl PendingTransfer {
     pub(super) fn opened(host: String, ttfb: Duration, at: Instant) -> Self {
         Self {
             host,
+            resumed: false,
             opened: Some((ttfb, at)),
             bytes: 0,
             last_at: at,
@@ -21,12 +23,14 @@ impl PendingTransfer {
 
     pub(super) fn append_events(&self, key: TransferKey, events: &mut Vec<TrafficEvent>) {
         if let Some((ttfb, at)) = self.opened {
-            events.push(TrafficEvent::Opened {
+            events.push(if self.resumed {
+                TrafficEvent::Resumed { transfer: key, host: self.host.clone(), at }
+            } else { TrafficEvent::Opened {
                 transfer: key,
                 host: self.host.clone(),
                 ttfb,
                 at,
-            });
+            }});
         }
         if self.bytes > 0 {
             events.push(TrafficEvent::Progress {

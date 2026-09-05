@@ -29,6 +29,8 @@ pub(in crate::chunk::downloader) struct MeasuredTraffic<'a> {
     measured: TrafficMeasurements,
     attempt_profile: OriginAttemptProfile,
     opened_at: Option<Instant>,
+    body_wait: Duration,
+    body_wait_started: Option<Instant>,
 }
 
 impl Default for TrafficMeasurements {
@@ -64,7 +66,13 @@ impl<'a> MeasuredTraffic<'a> {
             measured,
             attempt_profile,
             opened_at: None,
+            body_wait: Duration::ZERO,
+            body_wait_started: None,
         }
+    }
+
+    fn body_wait_elapsed(&self) -> Duration {
+        self.body_wait + self.body_wait_started.map_or(Duration::ZERO, |at| at.elapsed())
     }
 
     pub fn measurements(&self) -> TrafficMeasurements {
@@ -72,7 +80,7 @@ impl<'a> MeasuredTraffic<'a> {
         measured.origin_elapsed = measured.origin_elapsed.or_else(|| {
             self.opened_at
                 .zip(measured.ttfb)
-                .map(|(opened_at, ttfb)| ttfb + opened_at.elapsed())
+                .map(|(opened_at, ttfb)| ttfb + opened_at.elapsed().saturating_sub(self.body_wait_elapsed()))
         });
         measured
     }
@@ -169,9 +177,22 @@ impl ChunkTraffic for MeasuredTraffic<'_> {
         self.measured.origin_elapsed = self
             .opened_at
             .zip(self.measured.ttfb)
-            .map(|(opened_at, ttfb)| ttfb + opened_at.elapsed());
+            .map(|(opened_at, ttfb)| ttfb + opened_at.elapsed().saturating_sub(self.body_wait_elapsed()));
         self.measured.whole_body_completion = Some(completion.clone());
         self.inner.whole_body_completed(completion);
+    }
+
+    fn authorize_body<'a>(
+        &'a mut self, through: u64,
+    ) -> Pin<Box<dyn Future<Output = anyhow::Result<()>> + Send + 'a>> {
+        Box::pin(async move {
+            let started = Instant::now();
+            self.body_wait_started = Some(started);
+            let result = self.inner.authorize_body(through).await;
+            self.body_wait += started.elapsed();
+            self.body_wait_started = None;
+            result
+        })
     }
 
     fn authorize_response<'a>(

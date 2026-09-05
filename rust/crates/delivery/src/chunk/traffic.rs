@@ -46,6 +46,12 @@ pub trait ChunkTraffic: Send {
     fn response_observed(&mut self, _response: OpenedResponse) {}
     fn whole_body_completed(&mut self, _completion: WholeBodyCompletion) {}
 
+    fn authorize_body<'a>(
+        &'a mut self, _through: u64,
+    ) -> Pin<Box<dyn Future<Output = anyhow::Result<()>> + Send + 'a>> {
+        Box::pin(async { Ok(()) })
+    }
+
     fn authorize_response<'a>(
         &'a mut self,
         _response: OpenedResponse,

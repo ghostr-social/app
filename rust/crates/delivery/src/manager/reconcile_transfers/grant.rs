@@ -169,5 +169,5 @@ impl DeliveryWorker {
 
 fn request_resources(request: RetrievalRequest) -> ResourceCost {
     let bytes = request.immediate_network_bytes();
-    ResourceCost::new(bytes, bytes, 0, 1)
+    ResourceCost::new(request.initial_network_bytes(), bytes, 0, 1)
 }

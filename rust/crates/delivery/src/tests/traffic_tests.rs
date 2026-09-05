@@ -16,3 +16,5 @@ mod silence_timer;
 mod window_observability;
 #[path = "traffic_zero_byte_host_test.rs"]
 mod zero_byte_host;
+#[path = "traffic_body_renewal_pause_test.rs"]
+mod body_renewal_pause;

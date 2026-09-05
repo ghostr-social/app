@@ -10,6 +10,7 @@ use std::collections::{BTreeMap, HashSet};
 mod action;
 mod cancellation;
 mod hedge;
+mod body_renewal;
 mod http_generation;
 mod lifecycle;
 mod network_reservation;

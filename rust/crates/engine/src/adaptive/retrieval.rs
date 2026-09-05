@@ -101,6 +101,15 @@ impl RetrievalRequest {
         self.requested_bytes().len()
     }
 
+    /// Rate admission for the next bounded portion of one continuous response.
+    /// Storage and cumulative Internet reservations keep their full envelopes.
+    pub fn initial_network_bytes(self) -> u64 {
+        match self {
+            Self::FetchWhole { .. } => self.immediate_network_bytes().min(super::REQUEST_SLICE_BYTES),
+            Self::FetchRange { .. } => self.immediate_network_bytes(),
+        }
+    }
+
     pub fn promotion(self) -> Option<PromotionGrant> {
         match self {
             Self::FetchRange { promotion, .. } => promotion,

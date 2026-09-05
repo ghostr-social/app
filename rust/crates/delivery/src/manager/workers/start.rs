@@ -29,7 +29,7 @@ impl PreparedTransfer {
     pub(crate) fn record_network_commit(&mut self, bytes: u64) {
         debug_assert_eq!(
             bytes,
-            self.retrieval.immediate_network_bytes(),
+            self.retrieval.initial_network_bytes(),
             "network commitment must match the prepared retrieval"
         );
         self.committed_network_bytes = Some(bytes);

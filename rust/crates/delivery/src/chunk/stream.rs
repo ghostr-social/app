@@ -14,6 +14,8 @@ use ghostr_engine::adaptive::{RetrievalRequest, WholeBodyContract};
 use ghostr_engine::ByteRange;
 use ghostr_net::media_request_executor::MediaResponse;
 
+mod whole;
+use whole::stream_whole;
 mod progress;
 pub(crate) use progress::Streamed;
 mod store;
@@ -66,32 +68,6 @@ async fn stream_range<W: ChunkWrite + ?Sized>(
         }
     }
     Ok(completed_range(written))
-}
-
-async fn stream_whole<W: ChunkWrite + ?Sized>(
-    input: &mut StreamInput<'_, '_, W>,
-    contract: WholeBodyContract,
-) -> Result<Streamed> {
-    let mut written = 0_u64;
-    loop {
-        let Some(chunk) = next_input(input).await? else {
-            let streamed = ended_whole(written, contract, input)?;
-            if let Some(completion) = streamed.whole_body_completion.clone() {
-                input.traffic.whole_body_completed(completion);
-            }
-            return Ok(streamed);
-        };
-        crate::chunk::whole_body_limit::WholeBodyLimitReached::check(
-            written,
-            chunk.len() as u64,
-            contract,
-        )?;
-        let stored = store_bytes(StoreInput::from(&*input), written, &chunk).await?;
-        written += stored.bytes;
-        if stored.cancelled {
-            return Ok(stopped(written));
-        }
-    }
 }
 
 async fn next_input<W: ChunkWrite + ?Sized>(

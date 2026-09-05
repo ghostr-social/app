@@ -44,6 +44,12 @@ impl TrafficPublisher {
         accepted
     }
 
+    pub(crate) fn resumed(&self, transfer: TransferKey, host: String, at: Instant) -> bool {
+        let accepted = self.lock().resume(transfer, host, at);
+        if accepted { self.wake(); }
+        accepted
+    }
+
     pub(crate) fn progress(&self, transfer: TransferKey, bytes: u64, at: Instant) {
         self.lock().progress(transfer, bytes, at);
     }
@@ -111,6 +117,12 @@ impl State {
         self.window_started.get_or_insert(at);
         self.transfers
             .insert(key, PendingTransfer::opened(host, ttfb, at));
+        true
+    }
+
+    fn resume(&mut self, key: TransferKey, host: String, at: Instant) -> bool {
+        if !self.open(key, host, Duration::ZERO, at) { return false; }
+        self.transfers.get_mut(&key).expect("opened traffic window").resumed = true;
         true
     }
 

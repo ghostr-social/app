@@ -12,4 +12,5 @@ mod stream;
 pub(crate) mod traffic;
 pub(crate) mod whole_body_bound;
 pub(crate) mod whole_body_limit;
+pub(crate) mod body_lease;
 pub(super) mod whole_body_policy;

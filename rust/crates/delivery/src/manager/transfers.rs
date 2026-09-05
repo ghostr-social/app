@@ -37,6 +37,7 @@ pub(crate) enum InternalEvent {
     HedgeTail(crate::manager::hedge_tail::HedgeTailWake),
     Maintenance(MaintenanceEvent),
     TrafficChanged,
+    BodyRenewal(crate::manager::body_renewal::BodyRenewalRequest),
 }
 
 pub(crate) enum TransferEvent {

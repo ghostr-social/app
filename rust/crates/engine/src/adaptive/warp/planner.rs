@@ -1,4 +1,7 @@
 mod capacity_demand;
+mod network_window;
+#[cfg(test)]
+mod network_window_test;
 mod demand;
 mod feasibility;
 mod feedback;
