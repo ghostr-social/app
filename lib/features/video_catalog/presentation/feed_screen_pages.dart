@@ -2,28 +2,48 @@ part of 'feed_screen.dart';
 
 extension _FeedScreenPages on _FeedScreenState {
   Widget _feedPages(BuildContext context, FeedLoaded state) {
-    final playbackIds = {
-      for (
-        var index = state.activeIndex;
-        index <= state.activeIndex + _pageHostedFutureDepth &&
-            index < state.posts.length;
-        index++
-      )
-        if (_playbackSource(state, index) != null) state.posts[index].id,
-    };
+    _playbackPreview.synchronize(state.kind);
+    final playbackIds = _hostedPlaybackIds(state);
     _pagePlayback.synchronize(
       playbackIds: playbackIds,
       keepAliveIds: playbackIds,
     );
-    return FeedPageView(
-      key: ValueKey(state.kind),
-      model: FeedPageModel(
-        keys: state.posts.map((post) => ValueKey(post.id.value)),
-        rosterRevision: state.rosterRevision,
-        activePage: state.activeIndex,
+    return _pageView(context, state);
+  }
+
+  Set<VideoPostId> _hostedPlaybackIds(FeedLoaded state) {
+    final warm = _warmPageIndex(state);
+    return {
+      for (final index in [state.activeIndex, if (warm != null) warm])
+        if (_playbackSource(state, index) != null) state.posts[index].id,
+    };
+  }
+
+  Widget _pageView(BuildContext context, FeedLoaded state) {
+    return NotificationListener<ScrollNotification>(
+      onNotification: (notification) => _previewScroll(notification, state),
+      child: FeedPageView(
+        key: ValueKey(state.kind),
+        model: FeedPageModel(
+          keys: state.posts.map((post) => ValueKey(post.id.value)),
+          rosterRevision: state.rosterRevision,
+          activePage: state.activeIndex,
+        ),
+        onPageChanged: (index) => _commitPageNavigation(state, index),
+        itemBuilder: (_, index) => _feedPage(context, state, index),
+        overlay: _committedOverlay(context, state),
       ),
-      onPageChanged: context.read<FeedCubit>().pageChanged,
-      itemBuilder: (_, index) => _feedPage(context, state, index),
+    );
+  }
+
+  Widget _committedOverlay(BuildContext context, FeedLoaded state) {
+    final post = state.roster.active;
+    return BlocBuilder<VideoShareCubit, VideoShareState>(
+      builder: (context, sharing) => FeedCardOverlay(
+        key: ValueKey(post.id),
+        post: post,
+        actions: _actions(context, state, post, sharing),
+      ),
     );
   }
 
@@ -42,8 +62,7 @@ extension _FeedScreenPages on _FeedScreenState {
 
   FeedCardPlaybackSource? _playbackSource(FeedLoaded state, int index) {
     final current = index == state.activeIndex;
-    final distance = index - state.activeIndex;
-    if (!current && (distance < 1 || distance > _pageHostedFutureDepth)) {
+    if (!current && index != _warmPageIndex(state)) {
       return null;
     }
     final media = state.posts[index].media;
@@ -57,8 +76,6 @@ extension _FeedScreenPages on _FeedScreenState {
     return null;
   }
 
-  int get _pageHostedFutureDepth => _isVisible && !_memoryConstrained ? 1 : 0;
-
   Widget _feedCard(
     BuildContext context,
     FeedLoaded state,
@@ -71,6 +88,7 @@ extension _FeedScreenPages on _FeedScreenState {
         post: post,
         playback: playback,
         actions: _actions(context, state, post, sharing),
+        showOverlay: false,
       ),
     );
   }

@@ -6,6 +6,8 @@ use std::sync::{Arc, Mutex};
 use tokio::sync::oneshot;
 
 mod allowance;
+mod lease;
+mod retirement;
 mod state;
 use state::GateState;
 mod observer;
@@ -152,31 +154,6 @@ fn returned_request(result: Result<(), RequestLease>) -> Option<ReleasedRequest>
             priority: lease.priority,
         }
     })
-}
-
-impl RequestLease {
-    fn new(
-        gate: MediaRequestGate,
-        authority: RequestAuthority,
-        priority: PreemptionAuthority,
-    ) -> Self {
-        Self {
-            gate,
-            authority,
-            priority,
-            armed: true,
-            body: None,
-        }
-    }
-}
-
-impl Drop for RequestLease {
-    fn drop(&mut self) {
-        drop(self.body.take());
-        if self.armed {
-            self.gate.release(&self.authority, self.priority);
-        }
-    }
 }
 
 impl QueuedRequest {

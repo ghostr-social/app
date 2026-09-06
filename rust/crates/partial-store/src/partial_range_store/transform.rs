@@ -94,6 +94,8 @@ impl PartialRangeStore {
         };
         let staged = publication.output_bytes();
         self.require_headroom(staged).await?;
+        // Cancellation or any staging/commit error must leave recovery required.
+        self.transform_recovery.forget(key);
         let prepared = transaction::stage(&self.paths, key, publication).await?;
         if !authorize() {
             transaction::discard_staging(&self.paths, key).await?;
@@ -158,7 +160,12 @@ impl PartialRangeStore {
     }
 
     pub(super) async fn recover_transform_locked(&self, key: &str) -> Result<()> {
-        recovery::recover(&self.paths, key).await
+        if self.transform_recovery.contains(key) {
+            return Ok(());
+        }
+        recovery::recover(&self.paths, key).await?;
+        self.transform_recovery.remember(key);
+        Ok(())
     }
 
     pub(super) async fn restored_transform_binding(

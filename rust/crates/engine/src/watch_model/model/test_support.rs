@@ -5,6 +5,10 @@ impl WatchModel {
     #[cfg(test)]
     pub(crate) const MAX_PERSISTED_GROUPS: usize = PERSISTED_GROUP_LIMIT;
 
+    pub fn predict_window(&self, contexts: &[WatchContext], now_ms: u64) -> WatchWindowPrediction {
+        self.predict_remaining_window(contexts, WatchProgress::default(), now_ms)
+    }
+
     pub fn navigation(&self) -> NavigationPrediction {
         self.navigation.prediction(self.last_observed_ms)
     }

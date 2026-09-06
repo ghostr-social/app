@@ -2,15 +2,22 @@ use super::RequestLease;
 use anyhow::{Context as _, Result};
 
 impl RequestLease {
-    pub(in crate::media_request_executor) fn reserve_body(&mut self, maximum: u64) -> Result<()> {
-        self.body = Some(
-            self.gate
-                .inner
-                .allowance
-                .reserve(maximum)
-                .context(crate::internet_allowance::InternetAdmissionDenied)?,
-        );
-        Ok(())
+    pub(in crate::media_request_executor) async fn reserve_body(
+        mut self,
+        maximum: u64,
+    ) -> Result<Self> {
+        tokio::task::spawn_blocking(move || {
+            self.body = Some(
+                self.gate
+                    .inner
+                    .allowance
+                    .reserve(maximum)
+                    .context(crate::internet_allowance::InternetAdmissionDenied)?,
+            );
+            Ok(self)
+        })
+        .await
+        .context("Internet reservation worker failed")?
     }
 
     pub(in crate::media_request_executor) fn sending(&mut self) {
@@ -26,10 +33,24 @@ impl RequestLease {
             .received(bytes)
     }
 
-    pub(in crate::media_request_executor) fn complete_body(&mut self) -> Result<()> {
-        self.body
-            .as_mut()
-            .context("media request has no body reservation")?
-            .complete()
+    pub(in crate::media_request_executor) async fn complete_body(mut self) -> Result<Self> {
+        tokio::task::spawn_blocking(move || {
+            self.body
+                .take()
+                .context("media request has no body reservation")?
+                .complete()?;
+            Ok(self)
+        })
+        .await
+        .context("Internet settlement worker failed")?
+    }
+
+    pub(in crate::media_request_executor) async fn abandon_body(mut self) -> Result<Self> {
+        tokio::task::spawn_blocking(move || {
+            drop(self.body.take());
+            self
+        })
+        .await
+        .context("Internet cancellation worker failed")
     }
 }

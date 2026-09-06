@@ -9,7 +9,6 @@ use ghostr_partial_store::partial_range_store::{
 };
 use std::path::PathBuf;
 use std::sync::Arc;
-use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::sync::Mutex;
 
 pub(super) struct TransformFixture {
@@ -21,12 +20,7 @@ pub(super) struct TransformFixture {
 
 impl TransformFixture {
     pub(super) async fn seeded(label: &str) -> Self {
-        let nonce = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .expect("valid test fixture")
-            .as_nanos();
-        let root = std::env::temp_dir().join(format!("{label}-{nonce}"));
-        std::fs::create_dir_all(&root).expect("valid test fixture");
+        let root = crate::tests::support::temp_directory(label);
         let store = Arc::new(PartialRangeStore::with_capacity(
             root.clone(),
             Arc::new(Mutex::new(0)),

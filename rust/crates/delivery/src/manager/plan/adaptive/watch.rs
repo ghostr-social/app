@@ -1,9 +1,11 @@
 use ghostr_engine::adaptive::{
     PlannerContext, PlannerWatchEvidence, SemanticScore, TwinEpochs, ViewProbability,
 };
-use ghostr_engine::watch_model::{CandidateWatchPrediction, WatchContext, WatchKey, WatchModel};
+use ghostr_engine::watch_model::{CandidateWatchPrediction, WatchModel, WatchProgress};
 use ghostr_engine::PostId;
 use std::collections::BTreeMap;
+mod inputs;
+use inputs::CandidateInput;
 
 pub(super) struct WatchPlanningWindow {
     candidates: BTreeMap<PostId, CandidateEvidence>,
@@ -17,21 +19,24 @@ struct CandidateEvidence {
     watch: PlannerWatchEvidence,
 }
 
-struct CandidateInput {
-    post: PostId,
-    rank: usize,
-    current: bool,
-    duration_ms: u64,
-}
-
 impl WatchPlanningWindow {
     pub(super) fn predict(
         snapshot: &mut ghostr_engine::adaptive::PlayabilitySnapshot,
         model: &WatchModel,
+        progress: WatchProgress,
+        window: &crate::qoe::WatchWindow,
     ) -> Self {
-        let inputs = candidate_inputs(snapshot);
-        let contexts = inputs.iter().map(watch_context).collect::<Vec<_>>();
-        let prediction = model.predict_window(&contexts, snapshot.observed_at_ms);
+        let inputs = inputs::candidates(snapshot, window);
+        let contexts = inputs
+            .iter()
+            .map(|input| input.context.clone())
+            .collect::<Vec<_>>();
+        let progress = inputs
+            .first()
+            .filter(|input| input.current)
+            .map_or_else(WatchProgress::default, |_| progress);
+        let prediction =
+            model.predict_remaining_window(&contexts, progress, snapshot.observed_at_ms);
         let candidates = inputs
             .into_iter()
             .zip(prediction.candidates())
@@ -67,31 +72,26 @@ impl WatchPlanningWindow {
                 candidate.view_probability = evidence.view;
             }
         }
+        for candidate in &mut snapshot.hls_candidates {
+            if let Some(evidence) = self.candidates.get(&candidate.post) {
+                candidate.view_probability = evidence.view;
+            }
+        }
     }
 }
 
-fn candidate_inputs(
-    snapshot: &ghostr_engine::adaptive::PlayabilitySnapshot,
-) -> Vec<CandidateInput> {
-    snapshot
-        .candidates
-        .iter()
-        .filter(|candidate| candidate.feed_offset.value() >= 0)
-        .enumerate()
-        .map(|(rank, candidate)| CandidateInput {
-            post: candidate.post.clone(),
-            rank,
-            current: candidate.feed_offset.value() == 0,
-            duration_ms: candidate.duration_ms,
-        })
-        .collect()
-}
-
-fn watch_context(input: &CandidateInput) -> WatchContext {
-    WatchContext::new(
-        WatchKey::digest(input.post.as_str()),
-        (input.duration_ms > 0).then_some(input.duration_ms),
-    )
+pub(super) fn progress(
+    state: &crate::manager::state::DeliveryState,
+    elapsed: core::time::Duration,
+) -> WatchProgress {
+    state
+        .playback()
+        .observation()
+        .and_then(|observation| core::num::NonZeroU16::new(observation.playback_rate_milli()))
+        .map_or_else(
+            || WatchProgress::normal(elapsed),
+            |rate| WatchProgress::at_rate(elapsed, rate),
+        )
 }
 
 fn candidate_evidence(

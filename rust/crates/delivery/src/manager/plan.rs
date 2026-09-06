@@ -44,6 +44,8 @@ pub(crate) struct PlanInputs<'a> {
     pub packet_loss_bps: u16,
     pub resource_feedback: Option<ghostr_engine::adaptive::ResourceFeedback>,
     pub capacity_revision: u64,
+    pub current_watch: core::time::Duration,
+    pub watch_window: &'a crate::qoe::WatchWindow,
     pub observed_at_ms: u64,
     pub demanded: &'a HashMap<PostId, ByteRange>,
 }

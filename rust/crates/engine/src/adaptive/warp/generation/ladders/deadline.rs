@@ -18,7 +18,7 @@ fn deadline_values(fallback: u64, watch: PlannerWatchEvidence) -> Vec<u64> {
     };
     let mut values = quantiles
         .into_iter()
-        .filter(|deadline| *deadline > 0)
+        .filter(|deadline| safety.is_none() || *deadline > 0)
         .collect::<Vec<_>>();
     values.extend(safety);
     if values.is_empty() {

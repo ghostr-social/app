@@ -75,7 +75,9 @@ impl MediaResponse {
         if result.is_err() || matches!(result, Ok(None)) {
             self.failed = result.is_err();
             self.inner = None;
-            self.lease = None;
+            if let Some(lease) = self.lease.take() {
+                drop(lease.abandon_body().await?);
+            }
         }
         result
     }
@@ -92,9 +94,16 @@ impl MediaResponse {
             lease.record_response_bytes(bytes.len() as u64);
             lease.received_body(bytes.len() as u64)?;
         } else {
-            lease.complete_body()?;
+            self.complete_body().await?;
         }
         Ok(chunk)
+    }
+
+    async fn complete_body(&mut self) -> anyhow::Result<()> {
+        if let Some(lease) = self.lease.take() {
+            drop(lease.complete_body().await?);
+        }
+        Ok(())
     }
 
     /// # Errors

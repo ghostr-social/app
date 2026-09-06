@@ -56,6 +56,34 @@ impl RequestBudget {
         let used = self.authorities.entry(authority).or_default();
         *used = used.saturating_add(1);
     }
+
+    fn contended_by(&self, source: &str, active: &ActiveAction) -> bool {
+        if self.global_used >= self.global_limit {
+            return true;
+        }
+        let Some(authority) = RequestAuthority::from_url(source) else {
+            return false;
+        };
+        RequestAuthority::from_url(active.identity().source().as_str()).as_ref() == Some(&authority)
+            && self.authorities.get(&authority).copied().unwrap_or(0) >= self.authority_limit
+    }
+}
+
+pub(super) fn current_blockers(input: Input<'_>) -> HashSet<ActionId> {
+    let Some(source) = missing_critical_source(input) else {
+        return HashSet::new();
+    };
+    let mut budget = RequestBudget::new(input.inputs);
+    seed_existing(&mut budget, input.inputs, &HashSet::new());
+    input
+        .inputs
+        .in_flight
+        .iter()
+        .filter(|active| !active.io_finished() && !active.cancelling())
+        .filter(|active| active.post() != &input.snapshot.playback.current)
+        .filter(|active| budget.contended_by(source, active))
+        .map(ActiveAction::action_id)
+        .collect()
 }
 
 fn seed_existing(budget: &mut RequestBudget, inputs: &PlanInputs<'_>, scoped: &HashSet<ActionId>) {
@@ -91,6 +119,7 @@ fn missing_critical_source(input: Input<'_>) -> Option<&str> {
         })
         .map(|allocation| allocation.source.as_str())
         .or_else(|| pending_current_hls_source(input))
+        .filter(|source| !current_owns_origin_capacity(input, source))
 }
 
 fn pending_current_hls_source(input: Input<'_>) -> Option<&str> {
@@ -124,4 +153,22 @@ fn action_matches(input: Input<'_>, allocation: &Allocation, active: &ActiveActi
         && identity.as_ref() == Some(active.identity())
         && active_bytes.start < planned_bytes.end
         && planned_bytes.start < active_bytes.end
+}
+
+fn current_owns_origin_capacity(input: Input<'_>, source: &str) -> bool {
+    let Some(authority) = RequestAuthority::from_url(source) else {
+        return false;
+    };
+    input
+        .inputs
+        .in_flight
+        .iter()
+        .filter(|active| !active.io_finished() && !active.cancelling())
+        .filter(|active| active.post() == &input.snapshot.playback.current)
+        .filter(|active| {
+            RequestAuthority::from_url(active.identity().source().as_str()).as_ref()
+                == Some(&authority)
+        })
+        .count()
+        >= input.inputs.per_authority_request_limit.max(1)
 }

@@ -12,6 +12,7 @@ mod finish;
 mod lifecycle;
 mod open;
 mod opening;
+mod prefix;
 mod session;
 mod staged;
 mod state;

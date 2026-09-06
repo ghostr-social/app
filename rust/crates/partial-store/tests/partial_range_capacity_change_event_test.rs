@@ -8,7 +8,7 @@ async fn only_real_capacity_changes_wake_parked_delivery() {
         "ghostr-capacity-event",
         limits(2_000, 0),
         1_000,
-        Duration::from_secs(60),
+        Duration::from_mins(1),
     );
     fixture
         .store

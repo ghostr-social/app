@@ -15,7 +15,7 @@ fn unknown_feed_ignores_fresh_and_older_pages() {
 
     store.ingest_first_page(unknown, Vec::new(), &graph);
     let appended = store.ingest_older_page(unknown, Vec::new(), &graph);
-    assert!(!store.ingest_progress(unknown, post.clone(), &graph));
+    assert!(!store.ingest_progress(unknown, vec![post.clone()], &graph));
     assert!(!store.ingest_head_page(unknown, vec![post], &graph));
     assert!(!store.ingest_deletions(unknown, Vec::new(), &graph));
     assert!(!store.ingest_deletions(unknown, deletion_claims(&[deletion(&keys)]), &graph,));

@@ -62,6 +62,8 @@ pub(super) fn plan_at(
             packet_loss_bps: 0,
             resource_feedback: None,
             capacity_revision: 0,
+            current_watch: core::time::Duration::ZERO,
+            watch_window: &crate::qoe::WatchWindow::default(),
             observed_at_ms,
             demanded: &HashMap::new(),
         },

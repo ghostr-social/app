@@ -1,6 +1,6 @@
 use super::FeedState;
 use crate::api::feed::progress::FeedProgress;
-use crate::discovery::content::candidates::{CandidateAdmission, VideoCandidate};
+use crate::discovery::content::candidates::{CandidateAdmission, CandidateBatch, VideoCandidate};
 use crate::discovery::content::deletions::deletion_claims;
 use crate::discovery::content::reposts::{GENERIC_REPOST_KIND, REPOST_KIND};
 use crate::discovery::feed::spec::FeedSpec;
@@ -53,19 +53,35 @@ impl FeedState {
     pub(crate) fn apply_progress(
         &mut self,
         context: &FeedContext,
-        event: &Event,
-    ) -> Option<VideoCandidate> {
-        let feed = self.feed_for(context)?;
-        self.ingest_deletion_events(feed, core::slice::from_ref(event));
+        events: &[Event],
+    ) -> Vec<VideoCandidate> {
+        let Some(feed) = self.feed_for(context) else {
+            return Vec::new();
+        };
+        self.ingest_deletion_events(feed, events);
         let following = matches!(self.store.spec(feed), FeedSpec::Following { .. });
-        if following || waits_for_deletion_checks(event) {
-            return None;
+        if following {
+            return Vec::new();
         }
-        let inspected = self.candidates.inspect(event);
-        if let Some(post) = inspected.post {
-            self.store.ingest_progress(feed, post, &self.graph);
+        let batch = self.inspect_progress(events);
+        self.store.ingest_progress(feed, batch.posts, &self.graph);
+        batch.admitted
+    }
+
+    fn inspect_progress(&mut self, events: &[Event]) -> CandidateBatch {
+        let mut batch = CandidateBatch {
+            posts: Vec::new(),
+            admitted: Vec::new(),
+        };
+        for event in events
+            .iter()
+            .filter(|event| !waits_for_deletion_checks(event))
+        {
+            let inspected = self.candidates.inspect(event);
+            batch.posts.extend(inspected.post);
+            batch.admitted.extend(admitted(inspected.admission));
         }
-        admitted(inspected.admission)
+        batch
     }
 
     pub(super) fn ingest_page(

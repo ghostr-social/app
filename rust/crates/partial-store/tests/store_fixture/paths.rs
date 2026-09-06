@@ -15,7 +15,13 @@ pub(super) fn temp_root(prefix: &str) -> PathBuf {
         .as_nanos();
     let sequence = NEXT.fetch_add(1, Ordering::Relaxed);
     let process = std::process::id();
-    std::env::temp_dir().join(format!("{prefix}-{nonce}-{process}-{sequence}"))
+    store_artifacts().join(format!("{prefix}-{nonce}-{process}-{sequence}"))
+}
+
+fn store_artifacts() -> PathBuf {
+    std::env::var_os("CARGO_TARGET_DIR")
+        .map(|target| PathBuf::from(target).join("test-stores/partial-store"))
+        .unwrap_or_else(std::env::temp_dir)
 }
 
 pub(super) fn discard(root: &Path) {

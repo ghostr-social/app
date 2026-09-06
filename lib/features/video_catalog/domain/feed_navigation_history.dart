@@ -10,8 +10,8 @@ final class FeedNavigationHistory {
 
   const FeedNavigationHistory.complete() : maximumPrevious = null;
 
-  /// Matches WARP's three-item planning window behind the current video.
-  static const ordinary = FeedNavigationHistory.bounded(3);
+  /// Keeps five backward steps; media preparation has a separate resource budget.
+  static const ordinary = FeedNavigationHistory.bounded(5);
   static const unlimited = FeedNavigationHistory.complete();
 
   final int? maximumPrevious;

@@ -40,7 +40,7 @@ impl PartialRangeStore {
     /// Returns an error when the key or its persisted manifest cannot be read.
     pub async fn total_len(&self, key: &str) -> Result<Option<u64>> {
         let _update = self.observe_key(key).await?;
-        if let Some(response) = self.session_response(key).await {
+        if let Some(response) = self.readable_session_response(key).await {
             return Ok(response.manifest().total_len());
         }
         let mut entries = self.entries.lock().await;
@@ -52,7 +52,7 @@ impl PartialRangeStore {
     /// Returns an error when the key or its coherent range state cannot be read.
     pub async fn present_ranges(&self, key: &str) -> Result<Vec<Range<u64>>> {
         let _update = self.observe_key(key).await?;
-        if let Some(response) = self.session_response(key).await {
+        if let Some(response) = self.readable_session_response(key).await {
             return Ok(response.manifest().ranges());
         }
         let provisional = provisional::capture(self, key).await;
@@ -66,7 +66,7 @@ impl PartialRangeStore {
     /// Returns an error when the key or its coherent range state cannot be read.
     pub async fn missing_within(&self, key: &str, span: Range<u64>) -> Result<Vec<Range<u64>>> {
         let _update = self.observe_key(key).await?;
-        if let Some(response) = self.session_response(key).await {
+        if let Some(response) = self.readable_session_response(key).await {
             return Ok(response.manifest().missing_within(&span));
         }
         let provisional = provisional::capture(self, key).await;
@@ -83,7 +83,7 @@ impl PartialRangeStore {
         if let Some(read) = self.read_transient(key, &span).await {
             return Ok(read);
         }
-        if let Some(response) = self.session_response(key).await {
+        if let Some(response) = self.readable_session_response(key).await {
             return session::read(self, key, &response, span).await;
         }
         let provisional = provisional::capture(self, key).await;
@@ -132,8 +132,8 @@ impl PartialRangeStore {
     /// Returns an error when the key or its persisted manifest cannot be read.
     pub async fn is_complete(&self, key: &str) -> Result<bool> {
         let _update = self.observe_key(key).await?;
-        if self.session_response(key).await.is_some() {
-            return Ok(true);
+        if let Some(response) = self.readable_session_response(key).await {
+            return Ok(response.is_complete());
         }
         let mut entries = self.entries.lock().await;
         let entry = self.entry(&mut entries, key).await?;

@@ -6,7 +6,9 @@ use ghostr_engine::representation::{
 };
 use std::path::{Path, PathBuf};
 
+mod action_response;
 mod contracts;
+pub(super) use action_response::open as open_action_response;
 pub(super) use contracts::exact_response;
 mod http_generation;
 pub(super) use http_generation::authorize;

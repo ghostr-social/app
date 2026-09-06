@@ -79,8 +79,7 @@ impl RedirectContext {
         validate_request(&next, &authority)?;
         *next.method_mut() = method;
         let started = Instant::now();
-        let mut lease = self.acquire(authority, deadline).await?;
-        lease.reserve_body(self.maximum_body)?;
+        let lease = self.acquire(authority, deadline).await?;
         Ok((AdmittedHop::new(client, next, lease), started.elapsed()))
     }
 
@@ -89,7 +88,13 @@ impl RedirectContext {
         authority: RequestAuthority,
         deadline: Option<Instant>,
     ) -> Result<RequestLease> {
-        let acquiring = self.gate.acquire(authority, self.priority);
+        let acquiring = async {
+            self.gate
+                .acquire(authority, self.priority)
+                .await?
+                .reserve_body(self.maximum_body)
+                .await
+        };
         let Some(deadline) = deadline else {
             return acquiring.await;
         };
@@ -144,9 +149,7 @@ pub(super) async fn send(
     let mut visited = HashSet::new();
     let mut admission_wait = Duration::ZERO;
     for followed in 0..=MAX_REDIRECTS {
-        let mut result = hop.execute(deadline).await?;
-        crate::response_limits::validate_response_headers(result.response.headers())
-            .context("validate media response headers")?;
+        let mut result = hop.execute(deadline).await?.validate_headers().await?;
         visited.insert(visit_key(result.request.url()));
         let Some(target) = redirect_target(&result.response)? else {
             let selection = result.request.selection(result.response.headers());
@@ -164,7 +167,7 @@ pub(super) async fn send(
         );
         let request = result.request.redirected(&target)?;
         if result.response.content_length() == Some(0) {
-            result.lease.complete_body()?;
+            result.lease = result.lease.complete_body().await?;
         }
         drop(result.response);
         drop(result.lease);
@@ -173,4 +176,17 @@ pub(super) async fn send(
         hop = next;
     }
     unreachable!("redirect loop is bounded")
+}
+
+impl HopResponse {
+    async fn validate_headers(self) -> Result<Self> {
+        if let Err(error) =
+            crate::response_limits::validate_response_headers(self.response.headers())
+        {
+            drop(self.response);
+            drop(self.lease.abandon_body().await?);
+            return Err(error).context("validate media response headers");
+        }
+        Ok(self)
+    }
 }

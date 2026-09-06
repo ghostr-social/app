@@ -196,5 +196,5 @@ pub async fn download_chunk_observed<W: ChunkWrite + ?Sized>(
     spec: &ChunkSpec<'_>,
     execution: ChunkExecution<'_, W>,
 ) -> ObservedChunk {
-    captured::download(spec, execution).await
+    Box::pin(captured::download(spec, execution)).await
 }

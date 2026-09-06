@@ -24,13 +24,19 @@ impl PendingTransfer {
     pub(super) fn append_events(&self, key: TransferKey, events: &mut Vec<TrafficEvent>) {
         if let Some((ttfb, at)) = self.opened {
             events.push(if self.resumed {
-                TrafficEvent::Resumed { transfer: key, host: self.host.clone(), at }
-            } else { TrafficEvent::Opened {
-                transfer: key,
-                host: self.host.clone(),
-                ttfb,
-                at,
-            }});
+                TrafficEvent::Resumed {
+                    transfer: key,
+                    host: self.host.clone(),
+                    at,
+                }
+            } else {
+                TrafficEvent::Opened {
+                    transfer: key,
+                    host: self.host.clone(),
+                    ttfb,
+                    at,
+                }
+            });
         }
         if self.bytes > 0 {
             events.push(TrafficEvent::Progress {

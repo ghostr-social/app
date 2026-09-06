@@ -70,11 +70,21 @@ async fn consecutive_relay_events_keep_advancing_the_debug_feed() {
     .expect("Nostr runtime");
 
     tokio::time::timeout(Duration::from_secs(3), async {
-        while feed.snapshot().revision < 100 {
+        while feed.snapshot().discovered_count < 100 {
             tokio::task::yield_now().await;
         }
     })
     .await
-    .expect("every relay event reaches the projection");
+    .unwrap_or_else(|_| {
+        let snapshot = feed.snapshot();
+        panic!(
+            "relay projection deadline: revision={}, discovered={}",
+            snapshot.revision, snapshot.discovered_count
+        );
+    });
     assert_eq!(feed.snapshot().discovered_count, 100);
+    assert!(
+        feed.snapshot().revision > 1,
+        "relay events advance the initial feed"
+    );
 }

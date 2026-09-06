@@ -5,7 +5,7 @@ use core::time::Duration;
 use ghostr_delivery::delivery_events::DeliveryHandle;
 mod decision_summary;
 mod stream;
-pub(super) use stream::next_request_while_streaming;
+pub(super) use stream::{next_request_while_streaming, send_bytes};
 pub(super) async fn next_request(
     origin: &mut ControlledOrigin,
     handle: &DeliveryHandle,

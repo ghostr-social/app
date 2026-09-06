@@ -80,6 +80,7 @@ fn config(value: crate::adaptive::WarpPlannerConfig) -> Option<RecordedPlannerCo
         safety_rescue_bps: value.safety_rescue_bps,
         emergency_rescue_bps: value.emergency_rescue_bps,
         reserve_progress_policy: value.reserve_progress_policy.into(),
+        navigation_preparation_policy: value.navigation_preparation_policy,
     })
 }
 

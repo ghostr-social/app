@@ -73,6 +73,27 @@ impl ProbabilityMass {
 pub struct WatchDistribution(ProbabilityMass);
 
 impl WatchDistribution {
+    pub(super) fn remaining_after(&self, progress: super::progress::WatchProgress) -> Self {
+        if progress.is_normal_start() {
+            return self.clone();
+        }
+        let elapsed_ms = progress.elapsed_ms();
+        let remaining: Vec<_> = self
+            .mass()
+            .0
+            .iter()
+            .filter(|point| elapsed_ms == 0 || point.at_ms > elapsed_ms)
+            .map(|point| Point {
+                at_ms: progress.wall_time_ms(point.at_ms - elapsed_ms),
+                probability: point.probability,
+            })
+            .collect();
+        if remaining.is_empty() {
+            return Self(ProbabilityMass::point(0));
+        }
+        Self(ProbabilityMass::normalize(remaining))
+    }
+
     pub(super) fn from_survival(curve: &[(u64, f64)], horizon_ms: u64) -> Self {
         let mut points = Vec::with_capacity(curve.len() + 1);
         let mut previous = 1.0;

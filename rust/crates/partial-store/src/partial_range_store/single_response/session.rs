@@ -2,30 +2,12 @@ use super::{PartialRangeStore, SingleResponseState};
 use crate::partial_range_disk as disk;
 use crate::partial_range_manifest::RangeManifest;
 use anyhow::{ensure, Result};
-use ghostr_engine::representation::{RepresentationBinding, TransferIdentity};
+use ghostr_engine::representation::RepresentationBinding;
 use std::collections::BTreeMap;
 
 mod promotion;
-
-#[derive(Clone, Eq, PartialEq)]
-pub(in crate::partial_range_store) struct SessionResponse {
-    identity: TransferIdentity,
-    manifest: RangeManifest,
-}
-
-impl SessionResponse {
-    pub(in crate::partial_range_store) fn identity(&self) -> &TransferIdentity {
-        &self.identity
-    }
-
-    pub(in crate::partial_range_store) fn manifest(&self) -> &RangeManifest {
-        &self.manifest
-    }
-
-    fn bytes(&self) -> u64 {
-        self.manifest.covered_bytes()
-    }
-}
+mod response;
+pub(in crate::partial_range_store) use response::SessionResponse;
 
 impl PartialRangeStore {
     pub(in crate::partial_range_store) async fn promote_verified_session(
@@ -51,15 +33,14 @@ impl PartialRangeStore {
         );
         let manifest = self.session_manifest(key, total).await?;
         disk::save_manifest(&self.paths.single_response_manifest(key), &manifest).await?;
-        let response = SessionResponse {
-            identity: state.identity.clone(),
-            manifest,
-        };
+        let response = SessionResponse::complete(state.identity.clone(), manifest);
         self.session_responses
             .lock()
             .await
             .insert(key.to_owned(), response);
-        self.advance_content_revision(key).await;
+        if state.readable_prefix().is_none() {
+            self.advance_content_revision(key).await;
+        }
         self.changed.notify_waiters();
         Ok(())
     }

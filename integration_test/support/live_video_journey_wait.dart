@@ -19,17 +19,13 @@ extension LiveVideoJourneyWait on LiveVideoJourney {
     }
   }
 
-  Future<bool> swipe(double direction) async {
+  Future<bool> swipe(LiveSwipeDirection direction) async {
     final page = find.byType(PageView).first;
     if (page.evaluate().isEmpty) return false;
-    final before = currentFocus?.videoId;
-    final distance = tester.getSize(page).height;
-    final gesture = await tester.startGesture(tester.getCenter(page));
-    await gesture.moveBy(Offset(0, direction * distance * 0.23));
-    await tester.pump(deviceRapidSwipeGestureTarget);
-    await gesture.up();
+    final before = currentFocus;
+    await LiveVideoSwipe(tester, log).perform(direction, before);
     return waitUntil(
-      () => currentFocus?.videoId != before,
+      () => currentFocus?.videoId != before?.videoId,
       timeout: const Duration(seconds: 5),
     );
   }

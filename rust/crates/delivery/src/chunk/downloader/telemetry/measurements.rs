@@ -7,6 +7,7 @@ use ghostr_engine::origin_model::{OriginAttemptContext, OriginAttemptProfile};
 use tokio::time::Instant;
 
 mod open_body;
+mod summary;
 pub(in crate::chunk::downloader) use open_body::OpenBodyMeasurement;
 
 #[derive(Clone, Debug)]
@@ -72,15 +73,18 @@ impl<'a> MeasuredTraffic<'a> {
     }
 
     fn body_wait_elapsed(&self) -> Duration {
-        self.body_wait + self.body_wait_started.map_or(Duration::ZERO, |at| at.elapsed())
+        self.body_wait
+            + self
+                .body_wait_started
+                .map_or(Duration::ZERO, |at| at.elapsed())
     }
 
     pub fn measurements(&self) -> TrafficMeasurements {
         let mut measured = self.measured.clone();
         measured.origin_elapsed = measured.origin_elapsed.or_else(|| {
-            self.opened_at
-                .zip(measured.ttfb)
-                .map(|(opened_at, ttfb)| ttfb + opened_at.elapsed().saturating_sub(self.body_wait_elapsed()))
+            self.opened_at.zip(measured.ttfb).map(|(opened_at, ttfb)| {
+                ttfb + opened_at.elapsed().saturating_sub(self.body_wait_elapsed())
+            })
         });
         measured
     }
@@ -98,50 +102,6 @@ impl<'a> MeasuredTraffic<'a> {
             self.measured.concurrency,
             started_at_ms,
         ));
-    }
-}
-
-impl TrafficMeasurements {
-    pub fn bytes(&self) -> u64 {
-        self.bytes
-    }
-
-    pub fn origin_elapsed(&self) -> Option<Duration> {
-        self.origin_elapsed
-    }
-
-    pub fn request_started(&self) -> bool {
-        self.request_started
-    }
-
-    pub(in crate::chunk::downloader) const fn attempt_context(
-        &self,
-    ) -> Option<OriginAttemptContext> {
-        self.attempt_context
-    }
-
-    pub fn with_network_class(
-        mut self,
-        network_class: ghostr_engine::origin_model::NetworkClass,
-    ) -> Self {
-        self.network_class = network_class;
-        self
-    }
-
-    pub fn whole_body_completion(&self) -> Option<&WholeBodyCompletion> {
-        self.whole_body_completion.as_ref()
-    }
-
-    pub fn response_evidence(&self) -> Option<&HttpResponseEvidence> {
-        self.response_evidence.as_ref()
-    }
-
-    pub(super) const fn response_observation(&self) -> Option<ResponseObservation> {
-        self.response_observation
-    }
-
-    pub(super) fn open_body(&self) -> Option<&OpenBodyMeasurement> {
-        self.open_body.as_ref()
     }
 }
 
@@ -174,16 +134,19 @@ impl ChunkTraffic for MeasuredTraffic<'_> {
     }
 
     fn whole_body_completed(&mut self, completion: WholeBodyCompletion) {
-        self.measured.origin_elapsed = self
-            .opened_at
-            .zip(self.measured.ttfb)
-            .map(|(opened_at, ttfb)| ttfb + opened_at.elapsed().saturating_sub(self.body_wait_elapsed()));
+        self.measured.origin_elapsed =
+            self.opened_at
+                .zip(self.measured.ttfb)
+                .map(|(opened_at, ttfb)| {
+                    ttfb + opened_at.elapsed().saturating_sub(self.body_wait_elapsed())
+                });
         self.measured.whole_body_completion = Some(completion.clone());
         self.inner.whole_body_completed(completion);
     }
 
     fn authorize_body<'a>(
-        &'a mut self, through: u64,
+        &'a mut self,
+        through: u64,
     ) -> Pin<Box<dyn Future<Output = anyhow::Result<()>> + Send + 'a>> {
         Box::pin(async move {
             let started = Instant::now();

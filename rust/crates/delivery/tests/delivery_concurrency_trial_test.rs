@@ -13,7 +13,7 @@ use delivery_fixture::{start_harness_at, temp_directory, DeliveryHarness};
 use ghostr_engine::EngineParams;
 use support::{
     decision_sequence, disjoint, expect_no_request, next_request, next_request_while_streaming,
-    wait_for_bytes, wait_for_parallel_demand_after,
+    send_bytes, wait_for_bytes, wait_for_parallel_demand_after,
 };
 
 const WARMUP_BYTES: usize = 8;
@@ -26,6 +26,12 @@ async fn positive_warp_demand_starts_one_parallel_disjoint_range() {
     let root = temp_directory("ghostr-concurrency-trial");
     seed_overall_throughput(&root, 1_048_576);
     let harness = start_harness_at(root, options());
+    // Keep the fixture on the bounded range path even when whole GETs are eligible.
+    harness
+        .store
+        .set_storage_budget(2 * 1_024 * 1_024)
+        .await
+        .expect("bounded range cache");
     harness.handle.update_focus(focus_now(
         vec![sized_item(
             "current",
@@ -51,7 +57,7 @@ async fn positive_warp_demand_starts_one_parallel_disjoint_range() {
         .report_playback(playing_at("current", Duration::from_secs(4), 1));
     wait_for_admissions(&harness.handle, 1).await;
     let demand_fence = decision_sequence(&harness.handle);
-    send_bytes(&first).await;
+    send_bytes(&first, WARMUP_BYTES).await;
     wait_for_bytes(&harness, WARMUP_BYTES as u64 + 1).await;
     tokio::time::sleep(SAMPLE_WINDOW).await;
     wait_for_parallel_demand_after(&harness.handle, demand_fence).await;
@@ -74,12 +80,6 @@ async fn finish_trial(harness: &DeliveryHarness, first: ActiveRequest, second: A
     assert!(first.send_byte().await, "trial preserves the first range");
     harness.handle.clear().await.expect("valid test fixture");
     std::fs::remove_dir_all(&harness.root).ok();
-}
-
-async fn send_bytes(request: &ActiveRequest) {
-    for _ in 0..WARMUP_BYTES {
-        assert!(request.send_byte().await, "first range remains active");
-    }
 }
 
 fn options() -> DeliveryOptions {

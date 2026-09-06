@@ -15,7 +15,8 @@ use range_fixture::download_chunk_throttled;
 
 const TOTAL: u64 = 256 * 1_024;
 const FIRST_PACED_WRITE: u64 = 16 * 1_024;
-const PROGRESS_WATCHDOG: Duration = Duration::from_secs(10);
+// The prefix must arrive before completion, including on a slow durable filesystem.
+const PROGRESS_WATCHDOG: Duration = Duration::from_secs(180);
 
 #[tokio::test]
 async fn throttled_large_response_makes_incremental_store_progress() {

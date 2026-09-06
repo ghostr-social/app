@@ -4,6 +4,7 @@ use super::distribution::{DeadlineDistribution, WatchDistribution};
 use super::hierarchy::WatchHierarchy;
 use super::navigation::{NavigationState, WatchNavigation};
 use super::prediction::{CandidateWatchPrediction, WatchWindowPrediction};
+use super::progress::WatchProgress;
 use super::sample::{WatchSample, WatchSampleKind};
 use super::state::{WatchModelState, WatchStateError, PERSISTED_GROUP_LIMIT};
 use super::stats::{bin_end_ms, BINS};
@@ -51,13 +52,21 @@ impl WatchModel {
         WatchDistribution::from_survival(&curve, horizon_ms)
     }
 
-    pub fn predict_window(&self, contexts: &[WatchContext], now_ms: u64) -> WatchWindowPrediction {
+    /// Conditions the current watch on media progress and forecasts wall-clock starts.
+    /// Future presentations use normal speed until their own playback evidence arrives.
+    pub fn predict_remaining_window(
+        &self,
+        contexts: &[WatchContext],
+        mut progress: WatchProgress,
+        now_ms: u64,
+    ) -> WatchWindowPrediction {
         let mut start = DeadlineDistribution::immediate();
         let mut reach = 1.0;
         let forward = self.navigation.prediction(now_ms).forward_probability();
         let mut candidates = Vec::with_capacity(contexts.len());
         for context in contexts {
-            let watch = self.predict(context, now_ms);
+            let watch = self.predict(context, now_ms).remaining_after(progress);
+            progress = WatchProgress::default();
             candidates.push(CandidateWatchPrediction::new(
                 watch.clone(),
                 start.clone(),

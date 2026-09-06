@@ -23,7 +23,7 @@ extension LiveVideoJourneyBrowse on LiveVideoJourney {
       } else {
         log.add('corpus_excluded_video', {'eventId': id, 'url': url});
       }
-      if (visited.length < count && !await swipe(-1)) {
+      if (visited.length < count && !await swipe(LiveSwipeDirection.forward)) {
         failures.add('Feed did not advance after sample $index.');
         break;
       }
@@ -40,7 +40,7 @@ extension LiveVideoJourneyBrowse on LiveVideoJourney {
 
   Future<void> warmReturn() async {
     for (var index = 0; index < 5 && index < visited.length - 1; index++) {
-      if (!await swipe(1)) {
+      if (!await swipe(LiveSwipeDirection.backward)) {
         failures.add('Warm return could not reach prior video $index.');
         return;
       }
@@ -52,11 +52,9 @@ extension LiveVideoJourneyBrowse on LiveVideoJourney {
   Future<void> rapidSwipes() async {
     final page = find.byType(PageView).first;
     if (page.evaluate().isEmpty) return;
+    final gesture = LiveVideoSwipe(tester, log);
     for (var index = 0; index < 10; index++) {
-      final gesture = await tester.startGesture(tester.getCenter(page));
-      await gesture.moveBy(Offset(0, -tester.getSize(page).height * 0.23));
-      await tester.pump(deviceRapidSwipeGestureTarget);
-      await gesture.up();
+      await gesture.perform(LiveSwipeDirection.forward, currentFocus);
       await pumpFor(deviceRapidSwipeCadence - deviceRapidSwipeGestureTarget);
     }
     await pumpFor(const Duration(milliseconds: 500));

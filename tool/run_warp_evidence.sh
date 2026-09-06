@@ -41,7 +41,9 @@ if test "$serial" != none; then
       printf '%s=%s\n' "$prop" "$(adb -s "$serial" shell getprop "$prop" | tr -d '\r')"
     done
   } >"$dir/device.txt" 2>&1 || true
-  adb -s "$serial" logcat -c >/dev/null 2>&1 || true
+  python3 "$root/tool/bounded_logcat.py" "$serial" clear \
+    --timeout "${WARP_LOGCAT_TIMEOUT_SECONDS:-10}" \
+    >/dev/null 2>"$dir/logcat-errors.log" || true
 else
   printf 'no device\n' >"$dir/device.txt"
 fi
@@ -53,7 +55,8 @@ status=$(cat "$status_file")
 python3 "$root/tool/warp_source_fingerprint.py" "$root" >"$dir/source-after.sha256"
 
 if test "$serial" != none; then
-  adb -s "$serial" logcat -d 2>/dev/null |
+  python3 "$root/tool/bounded_logcat.py" "$serial" dump \
+    --timeout "${WARP_LOGCAT_TIMEOUT_SECONDS:-10}" 2>>"$dir/logcat-errors.log" |
     grep -E 'ghostr|flutter|ExoPlayer|MediaCodec|AndroidRuntime|Decoder' \
       >"$dir/logcat.log" || true
 fi

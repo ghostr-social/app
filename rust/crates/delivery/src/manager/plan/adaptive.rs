@@ -17,10 +17,9 @@ pub(super) fn planned_work(
     planner: &mut ghostr_engine::adaptive::WarpPlanner,
     model: &ghostr_engine::watch_model::WatchModel,
 ) -> PlannedWork {
-    let Some(mut snapshot) = snapshot::build(state, inputs) else {
+    let Some((snapshot, watch)) = forecast_snapshot(state, inputs, model) else {
         return empty_work();
     };
-    let watch = watch::WatchPlanningWindow::predict(&mut snapshot, model);
     let allocation = AdaptivePlayabilityPolicy.plan(&snapshot);
     let (context, occupancy, hedge_tails) =
         warp_context::build(state, &snapshot, &allocation, inputs);
@@ -59,6 +58,21 @@ pub(super) fn planned_work(
         player_preparations: Vec::new(),
         plan: allocation,
     }
+}
+
+fn forecast_snapshot(
+    state: &DeliveryState,
+    inputs: &PlanInputs<'_>,
+    model: &ghostr_engine::watch_model::WatchModel,
+) -> Option<(
+    ghostr_engine::adaptive::PlayabilitySnapshot,
+    watch::WatchPlanningWindow,
+)> {
+    let mut snapshot = snapshot::build(state, inputs)?;
+    let progress = watch::progress(state, inputs.current_watch);
+    let watch =
+        watch::WatchPlanningWindow::predict(&mut snapshot, model, progress, inputs.watch_window);
+    Some((snapshot, watch))
 }
 
 fn has_playback_critical_work(allocation: &ghostr_engine::adaptive::AllocationPlan) -> bool {

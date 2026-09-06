@@ -5,11 +5,9 @@ use crate::discovery::content::parsing::ParsedVideoPost;
 use crate::discovery::content::profiles::CreatorProfile;
 use crate::engine::catalog::Catalog;
 use crate::engine::{DeliveryKind, PostId, VideoMeta};
-use core::sync::atomic::{AtomicU64, Ordering};
 use ghostr_partial_store::partial_range_store::capacity::StoreCapacity;
 use ghostr_partial_store::partial_range_store::PartialRangeStore;
 use std::sync::Arc;
-use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::sync::Mutex;
 
 /// One parsed post with every optional field populated; the kind and
@@ -77,13 +75,7 @@ pub(crate) fn sized_meta(size_bytes: u64, duration_ms: u64) -> VideoMeta {
 }
 
 pub(crate) fn temp_store(prefix: &str) -> Arc<PartialRangeStore> {
-    static NEXT_STORE: AtomicU64 = AtomicU64::new(1);
-    let nonce = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .expect("system clock")
-        .as_nanos();
-    let sequence = NEXT_STORE.fetch_add(1, Ordering::Relaxed);
-    let root = std::env::temp_dir().join(format!("{prefix}-{nonce}-{sequence}"));
+    let root = super::store_paths::unique(prefix);
     Arc::new(PartialRangeStore::with_capacity(
         root,
         Arc::new(Mutex::new(0)),

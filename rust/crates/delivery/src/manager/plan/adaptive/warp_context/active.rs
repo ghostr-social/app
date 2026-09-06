@@ -101,6 +101,9 @@ fn continuation_advantage(
     if retained {
         return CONTINUE_ADVANTAGE;
     }
+    if handoff.blocks_current(action) && !handoff.permits(action) {
+        return ABORT_ADVANTAGE;
+    }
     let protected = input.snapshot.candidates.iter().find_map(|candidate| {
         candidate
             .in_flight

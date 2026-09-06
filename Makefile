@@ -3,6 +3,7 @@ ADB ?= adb
 AXIOM ?= axiom
 FLUTTER_TEST_CONCURRENCY ?= 4
 FLUTTER_TEST_OPEN_FILES ?= 4096
+FLUTTER_TEST_TIMEOUT ?= 30s
 ANDROID_ABI ?= arm64-v8a
 ANDROID_RELEASE_TARGET ?= android-arm64
 ANDROID_DEBUG_TARGET ?= android-x64
@@ -148,7 +149,7 @@ HAWK_REVISION_SHORT := 98efa9f
 
 test-coverage: ## Run Flutter tests and collect Dart coverage.
 	@ulimit -n "$(FLUTTER_TEST_OPEN_FILES)"; \
-	exec $(FLUTTER) test --coverage --concurrency="$(FLUTTER_TEST_CONCURRENCY)"
+	exec $(FLUTTER) test --coverage --concurrency="$(FLUTTER_TEST_CONCURRENCY)" --timeout="$(FLUTTER_TEST_TIMEOUT)"
 
 coverage-summary: ## Report coverage and enforce the 80% Dart per-file floor.
 	@awk 'BEGIN{FS=":"; include=1} /^SF:/{include=($$0 !~ /lib\/src\/rust\//)} include && /^DA:/{split($$2,a,","); if (a[2] > 0) hit++; total++} END {if (total == 0) {print "No coverage data"; exit 1} printf("Line coverage: %.2f%% (%d/%d)\n", (hit/total)*100, hit, total)}' coverage/lcov.info
@@ -182,9 +183,27 @@ web-contract-test: ## Verify that the web tool is Rust-only.
 	sh test/tool/web_lifecycle_contract_test.sh
 	sh test/tool/web_untrusted_owner_contract_test.sh
 
-video-live-android-contract-test: ## Verify the live physical-device runner contract.
+video-live-android-contract-test: warp-evidence-contract-test ## Verify the live physical-device runner contract.
 	sh test/tool/video_live_android_target_test.sh
 	python3 test/tool/live_video_prior_corpus_test.py
+	python3 -m unittest discover -s test/tool -p 'live_android_capture*_test.py'
+	python3 -m unittest discover -s test/tool -p 'live_video_summary*_test.py'
+
+VIDEO_LIVE_SUMMARY_MODE ?= fresh
+.PHONY: video-live-android-summary
+video-live-android-summary: ## Summarize callback latency, retaining missing videos as failures.
+	@python3 tool/summarize_live_video.py --report "$(VIDEO_LIVE_REPORT)" \
+		--mode "$(VIDEO_LIVE_SUMMARY_MODE)" --pins "$(LIVE_VIDEO_EVENT_IDS)"
+
+.PHONY: video-live-android-record video-live-android-clock
+video-live-android-clock: ## Build the display-alignment clock using the selected Android NDK compiler.
+	test -n "$(ANDROID_CLOCK_CC)" && test -n "$(ANDROID_CLOCK_BINARY)"
+	"$(ANDROID_CLOCK_CC)" -O2 -Wall -Wextra -Werror tool/android_capture_clock.c -o "$(ANDROID_CLOCK_BINARY)"
+
+video-live-android-record: ## Record a live journey using an explicitly selected phone and clock binary.
+	python3 tool/record_live_android.py --serial "$(ANDROID_PHYSICAL_SERIAL)" \
+		--runner-log "$(VIDEO_LIVE_RUNNER_LOG)" --output "$(VIDEO_LIVE_CAPTURE_DIR)" \
+		--clock-binary "$(ANDROID_CLOCK_BINARY)"
 
 video-live-android-tests: video-live-android-contract-test ## Test real Nostr relays and media on the signed-in phone.
 	sh tool/run_video_live_android.sh "$(ANDROID_PHYSICAL_SERIAL)"
@@ -280,6 +299,7 @@ video-android-physical-tests: ## Run the device video playback matrix on physica
 
 warp-evidence-contract-test: ## Test the WARP evidence-capture runner.
 	sh test/tool/run_warp_evidence_test.sh
+	python3 test/tool/warp_evidence_adb_timeout_test.py
 
 video-android-physical-evidence: warp-evidence-contract-test ## Run the physical matrix and retain evidence under evidence/warp.
 	@test -n "$(ANDROID_PHYSICAL_SERIAL)" || { echo "Set ANDROID_PHYSICAL_SERIAL to an attached device serial." >&2; exit 1; }

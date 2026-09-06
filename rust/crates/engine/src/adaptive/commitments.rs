@@ -1,23 +1,41 @@
 use super::allocation_evidence::candidate_utility;
 use super::ranges::playable_gain;
+use super::reserves::critical_slots;
 use super::resources::storage_displaces_speculation;
 use super::{
-    AllocationReason, CandidateSnapshot, InFlightAction, OriginHealth, PlayabilitySnapshot,
-    PlayableRange, RetainedAllocation,
+    AllocationPlan, AllocationReason, CandidateSnapshot, InFlightAction, OriginHealth,
+    PlayabilitySnapshot, PlayableRange, RetainedAllocation,
 };
+
+mod origin_budget;
 
 pub(super) fn retained(
     snapshot: &PlayabilitySnapshot,
     playback_endangered: bool,
-    critical_slots: usize,
+    plan: &AllocationPlan,
 ) -> Vec<RetainedAllocation> {
     let mut work = current_commitments(snapshot);
     if storage_displaces_speculation(snapshot) {
         return work;
     }
     let future = future_commitments(snapshot);
-    let limit = future_limit(snapshot, playback_endangered, critical_slots, work.len());
-    work.extend(future.into_iter().take(limit));
+    let limit = future_limit(
+        snapshot,
+        playback_endangered,
+        critical_slots(plan),
+        work.len(),
+    );
+    let mut origins = origin_budget::FutureOriginBudget::new(
+        snapshot.network.per_authority_request_limit,
+        plan,
+        &work,
+    );
+    work.extend(
+        future
+            .into_iter()
+            .filter(|allocation| !playback_endangered || origins.admit(&allocation.source))
+            .take(limit),
+    );
     work
 }
 

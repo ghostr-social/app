@@ -19,7 +19,7 @@ pub(super) async fn prepared_with_meta() -> (
 ) {
     let source = hls_runtime_origin::start().await;
     let meta = hls_meta(&source);
-    let root = unique_root();
+    let root = super::store_paths::unique("ghostr-api-hls-authority");
     let (_, runtime, _) = GatewayRuntime::start(
         configuration(root.clone(), &source),
         Arc::new(ghostr_discovery::cache::client_with_event_cache()),
@@ -83,15 +83,4 @@ fn focus(meta: crate::engine::VideoMeta) -> DeliveryFocus {
         0,
         0,
     )
-}
-
-fn unique_root() -> PathBuf {
-    std::env::temp_dir().join(format!(
-        "ghostr-api-hls-authority-{}-{}",
-        std::process::id(),
-        std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .expect("clock")
-            .as_nanos()
-    ))
 }

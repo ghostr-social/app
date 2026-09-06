@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart' show ChangeNotifier, setEquals;
+import 'package:flutter/gestures.dart' show kTouchSlop;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:ghostr/core/media/hls_playback_authority.dart';
@@ -8,6 +9,7 @@ import 'package:ghostr/features/comments/presentation/comments_sheet.dart';
 import 'package:ghostr/features/video_catalog/domain/video_post.dart';
 import 'package:ghostr/features/video_catalog/domain/video_post_id.dart';
 import 'package:ghostr/features/video_catalog/presentation/feed_cubit.dart';
+import 'package:ghostr/features/video_catalog/presentation/feed_playback_preview.dart';
 import 'package:ghostr/features/video_catalog/presentation/feed_screen_bindings.dart';
 import 'package:ghostr/features/video_catalog/presentation/video_share_feed_scope.dart';
 import 'package:ghostr/features/video_catalog/presentation/widgets/feed_card.dart';
@@ -24,6 +26,7 @@ part 'feed_screen_actions.dart';
 part 'feed_screen_hls_playback.dart';
 part 'feed_screen_page_playback_controller.dart';
 part 'feed_screen_pages.dart';
+part 'feed_screen_playback_preview.dart';
 
 class FeedScreen extends StatefulWidget {
   const FeedScreen({required this.bindings, super.key});
@@ -37,6 +40,7 @@ class FeedScreen extends StatefulWidget {
 class _FeedScreenState extends State<FeedScreen> with WidgetsBindingObserver {
   final _playbackSurfaceScope = VideoPlaybackSurfaceScope();
   final _pagePlayback = _FeedPagePlaybackController();
+  final _playbackPreview = FeedPlaybackPreview();
   bool _commentsOpen = false;
   bool _appIsResumed = true;
   bool _memoryConstrained = false;
@@ -96,6 +100,10 @@ class _FeedScreenState extends State<FeedScreen> with WidgetsBindingObserver {
 
   bool get _isVisible {
     return widget.bindings.isActive && _appIsResumed && !_commentsOpen;
+  }
+
+  void _refreshPlaybackPreview() {
+    if (mounted) setState(() {});
   }
 
   @override

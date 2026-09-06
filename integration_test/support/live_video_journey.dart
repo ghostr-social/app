@@ -19,6 +19,7 @@ import 'package:integration_test/integration_test.dart';
 import 'device_playback_probe.dart';
 import 'device_qoe_targets.dart';
 import 'live_video_log.dart';
+import 'live_video_swipe.dart';
 import 'live_video_corpus.dart';
 import 'live_direct_playback.dart';
 import 'live_origin_probe.dart';

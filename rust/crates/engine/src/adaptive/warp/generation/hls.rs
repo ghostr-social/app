@@ -38,7 +38,11 @@ pub(super) fn add(
         return;
     };
     let depth = if stage.is_manifest() { 8 } else { 2 };
-    if !(0..=depth).contains(&candidate.feed_offset.value()) {
+    if !builder
+        .generation_policies
+        .navigation
+        .includes_depth(candidate.feed_offset, depth)
+    {
         return;
     }
     let Some(commitment) = commitment(builder, candidate, stage, policy) else {

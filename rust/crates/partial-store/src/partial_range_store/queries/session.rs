@@ -18,8 +18,12 @@ pub(super) async fn snapshot(
         revision: store.current_content_revision(key).await,
         total_len: manifest.total_len(),
         ranges: ranges.clone(),
-        planning_ranges: ranges,
-        complete: true,
+        planning_ranges: if response.is_complete() {
+            ranges
+        } else {
+            Vec::new()
+        },
+        complete: response.is_complete(),
         finalized: false,
         continuation_source: None,
         evidence: StoredEvidence::capture(manifest),
@@ -51,13 +55,13 @@ pub(super) async fn read(
         return Ok(None);
     };
     if let Some(bytes) = read::verified_bytes(plan.execute().await) {
-        return Ok(Some(bytes));
+        return Ok(response.is_readable().then_some(bytes));
     }
     match read::classify_retry(plan.execute().await) {
-        RetryOutcome::Verified(bytes) => Ok(Some(bytes)),
+        RetryOutcome::Verified(bytes) => Ok(response.is_readable().then_some(bytes)),
         RetryOutcome::Transient(error) => Err(error),
         RetryOutcome::StructuralLoss => {
-            store.discard_session_response(key).await?;
+            store.discard_readable_session(key, response).await?;
             Ok(None)
         }
     }

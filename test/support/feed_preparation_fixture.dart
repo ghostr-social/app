@@ -5,6 +5,7 @@ import 'package:ghostr/core/media/video_media_source.dart';
 import 'package:ghostr/core/media/video_representation_id.dart';
 import 'package:ghostr/features/video_catalog/domain/feed_focus_port.dart';
 import 'package:ghostr/features/video_catalog/domain/video_post.dart';
+import 'package:ghostr/features/video_catalog/domain/video_feed_repository.dart';
 import 'package:ghostr/features/video_catalog/presentation/feed_cubit.dart';
 import 'package:ghostr/features/video_inventory/domain/playback_preparation.dart';
 import 'package:ghostr/features/watch_history/domain/watch_history_tracker.dart';
@@ -31,6 +32,7 @@ final class FeedPreparationFixture {
     WidgetTester tester, {
     VideoPlaybackPort? playbackPort,
     FeedFocusPort? focus,
+    VideoFeedRepository? feed,
   }) async {
     VideoPlayerPlatform.instance = platform;
     final repository = FakeVideoCatalogRepository(forYouFeed: posts);
@@ -38,26 +40,20 @@ final class FeedPreparationFixture {
       history: FakeWatchHistoryRepository(),
       failureReporter: RecordingFailureReporter(),
     );
-    final playback = playbackPort ?? _defaultPlayback();
+    final playback = playbackPort ?? _defaultPlayback(url('p0'));
     await tester.pumpWidget(
       feedScreenHarness(
         repository,
         options: FeedScreenHarnessOptions(
           playbackPort: playback,
           focus: focus,
+          feed: feed,
           preparationUpdates: updates,
           watch: FeedWatchDependencies(tracker: tracker),
         ),
       ),
     );
     await tester.pumpAndSettle();
-  }
-
-  VideoPlaybackPort _defaultPlayback() {
-    return GatewayVideoPlaybackPort(
-      delegate: VideoPlayerPlaybackPort(),
-      gateway: FakeProgressivePlaybackGateway(immediatePlaybackUrl: url('p0')),
-    );
   }
 
   void publish(int revision, String current, String? next) {

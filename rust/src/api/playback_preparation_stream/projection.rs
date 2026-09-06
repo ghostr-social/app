@@ -9,6 +9,7 @@ use ghostr_engine::media_timeline::StartupFootprint;
 use ghostr_engine::PostId;
 
 mod asset;
+mod history;
 
 #[derive(Clone, Copy)]
 pub(super) enum CertifiedReadiness<'a> {
@@ -40,8 +41,9 @@ pub(crate) async fn project(context: &PreparationContext) -> Option<FfiPlaybackP
         Some(post) => asset::project(context, post, current_readiness(&evidence)).await,
         None => None,
     };
-    let upcoming = project_evidence_upcoming(context, &evidence).await;
+    let mut upcoming = project_evidence_upcoming(context, &evidence).await;
     let next = upcoming.first().cloned();
+    upcoming.extend(history::project(context, &evidence).await);
     Some(FfiPlaybackPreparationPlan {
         revision: evidence.revision,
         current_delivery_id: evidence

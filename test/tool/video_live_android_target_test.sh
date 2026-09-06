@@ -11,6 +11,10 @@ rg -q -- '--profile' tool/run_video_live_android.sh
 rg -q 'ro.kernel.qemu' tool/run_video_live_android.sh
 rg -q 'install -r' tool/run_video_live_android.sh
 rg -q -- '--use-existing-app' tool/run_video_live_android.sh
+if ! rg -q 'configureLiveVideoFrames\(binding\)' integration_test/live_nostr_video_test.dart; then
+  echo 'Live video measurements must render independently of observer pumps.' >&2
+  exit 1
+fi
 if rg -n 'pm clear|adb.*uninstall|setMock|WarpFeedRelay|ProgressiveDeviceOrigin|databaseFactoryMemory' \
   tool/run_video_live_android.sh integration_test/support/live_*.dart; then
   echo 'Live tests must preserve app data and use real services.' >&2

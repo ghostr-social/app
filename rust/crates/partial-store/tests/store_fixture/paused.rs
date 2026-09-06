@@ -54,7 +54,7 @@ impl FreeSpace for PausedSpace {
 }
 
 pub(super) fn paused_store(prefix: &str) -> PausedStore {
-    build_store(prefix, 0, Duration::from_secs(60), u64::MAX)
+    build_store(prefix, 0, Duration::from_mins(1), u64::MAX)
 }
 
 pub(super) fn paused_store_after(prefix: &str, pause_after: usize) -> PausedStore {
@@ -62,7 +62,7 @@ pub(super) fn paused_store_after(prefix: &str, pause_after: usize) -> PausedStor
 }
 
 pub(super) fn paused_store_with_budget(prefix: &str, budget: u64) -> PausedStore {
-    build_store(prefix, 0, Duration::from_secs(60), budget)
+    build_store(prefix, 0, Duration::from_mins(1), budget)
 }
 
 fn build_store(prefix: &str, pause_after: usize, recheck: Duration, budget: u64) -> PausedStore {

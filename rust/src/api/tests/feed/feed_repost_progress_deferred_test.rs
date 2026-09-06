@@ -20,9 +20,9 @@ fn repost_progress_waits_for_settled_deletion_checks() {
     let (feed, open) = state.open(FeedSpec::Search("original".to_owned()));
     let context = open.expect("search dispatch").context;
 
-    let candidate = state.apply_progress(&context, &wrapper);
+    let candidates = state.apply_progress(&context, core::slice::from_ref(&wrapper));
 
-    assert!(candidate.is_none());
+    assert!(candidates.is_empty());
     assert_eq!(state.stage(feed), FfiFeedStage::Loading);
     assert!(state.snapshot(feed).is_empty());
 }

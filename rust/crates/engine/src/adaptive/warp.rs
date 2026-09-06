@@ -23,8 +23,9 @@ pub use generation::{
     ActiveControl, CandidateRetrievalLadder, GeneratedAction, GeneratedActions, PlannerCommand,
 };
 pub(crate) use generation::{
-    HlsGenerationPolicy, OriginAdmissionGenerationPolicy, PromotionGenerationPolicy,
-    RangeAliasGenerationPolicy, WarpGenerationInput, WarpGenerationPolicies,
+    HlsGenerationPolicy, NavigationPreparationPolicy, OriginAdmissionGenerationPolicy,
+    PromotionGenerationPolicy, RangeAliasGenerationPolicy, WarpGenerationInput,
+    WarpGenerationPolicies,
 };
 pub(crate) use planner::{
     PlannerProfile, PlannerReplayCapsule, ReserveProgressPolicy, SearchReplayInput,

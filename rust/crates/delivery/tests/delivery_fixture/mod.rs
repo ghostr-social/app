@@ -42,6 +42,7 @@ pub mod retry;
 pub mod stats;
 pub mod transient_origin;
 pub mod wait;
+pub mod watch_deadline;
 
 pub use environment::{media_client, temp_directory};
 pub use harness::DeliveryHarness;

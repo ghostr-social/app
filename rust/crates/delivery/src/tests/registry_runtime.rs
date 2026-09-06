@@ -76,5 +76,8 @@ mod watch_model_persistence_restart_test;
 mod watch_model_persistence_version_test;
 mod watch_model_planner_integration_test;
 mod watch_model_transport_censor_test;
+mod watch_model_waiting_time_test;
+mod watch_model_window_bound_test;
+mod watch_model_window_retarget_test;
 mod whole_content_length_bound_test;
 mod whole_sink_fixture;

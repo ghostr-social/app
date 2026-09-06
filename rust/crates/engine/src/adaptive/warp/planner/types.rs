@@ -21,6 +21,7 @@ pub struct WarpPlannerConfig {
     pub(crate) safety_rescue_bps: u16,
     pub(crate) emergency_rescue_bps: u16,
     pub(crate) reserve_progress_policy: ReserveProgressPolicy,
+    pub(crate) navigation_preparation_policy: crate::adaptive::NavigationPreparationPolicy,
 }
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq, serde::Serialize, serde::Deserialize)]
@@ -47,6 +48,8 @@ impl Default for WarpPlannerConfig {
             safety_rescue_bps: 9_500,
             emergency_rescue_bps: 9_900,
             reserve_progress_policy: ReserveProgressPolicy::OrderedReadiness,
+            navigation_preparation_policy:
+                crate::adaptive::NavigationPreparationPolicy::BidirectionalWindow,
         }
     }
 }

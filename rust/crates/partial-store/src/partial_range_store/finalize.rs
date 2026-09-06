@@ -25,7 +25,7 @@ impl PartialRangeStore {
             }
             return verdict;
         }
-        if let Some(response) = self.session_response(key).await {
+        if let Some(response) = self.readable_session_response(key).await {
             return session::finalize(self, &mut entries, key, advertised, &response).await;
         }
         let entry = self.entry(&mut entries, key).await?;

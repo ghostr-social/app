@@ -17,7 +17,7 @@ fn background_progress_settles_without_moving_the_historical_cursor() {
     assert!(store.begin_load_more_at(feed, None).is_none());
 
     let progress = parsed(&video_note(&keys, "progress", 90));
-    assert!(store.ingest_progress(feed, progress, &graph));
+    assert!(store.ingest_progress(feed, vec![progress], &graph));
     let head = parsed(&video_note(&keys, "head", 100));
     assert!(store.ingest_head_page(feed, vec![head], &graph));
 

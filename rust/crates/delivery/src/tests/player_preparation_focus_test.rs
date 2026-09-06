@@ -7,7 +7,7 @@ use ghostr_partial_store::partial_range_store::ContentRevision;
 #[test]
 fn nearby_preparation_survives_backward_swipes_and_drops_outside_planning_window() {
     let revision = ContentRevision::default();
-    let ids = ["p0", "p1", "p2", "p3", "p4", "p5"];
+    let ids = ["p0", "p1", "p2", "p3", "p4", "p5", "p6", "p7"];
     let mut state = state(&ids, 0);
     let report = evidence(
         &state,
@@ -26,7 +26,13 @@ fn nearby_preparation_survives_backward_swipes_and_drops_outside_planning_window
         PlayerPreparation::FirstFrameRendered,
     );
 
-    state.apply_focus(focus(&ids, 5), 3);
+    state.apply_focus(focus(&ids, 6), 3);
+    assert_eq!(
+        state.player_preparation(&PostId::new("p1"), Some(revision)),
+        PlayerPreparation::FirstFrameRendered,
+        "the fifth previous post remains in the history window",
+    );
+    state.apply_focus(focus(&ids, 7), 4);
     assert_eq!(
         state.player_preparation(&PostId::new("p1"), Some(revision)),
         PlayerPreparation::Unverified,

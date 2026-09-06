@@ -6,6 +6,8 @@ use ghostr_engine::watch_model::{
 use ghostr_engine::PostId;
 
 mod focus;
+mod window;
+pub(crate) use window::{WatchCandidate, WatchWindow};
 
 use focus::{departure_kind, focused, navigation, same_post};
 
@@ -22,6 +24,7 @@ struct ActiveWatch {
 pub(crate) struct WatchLearner {
     model: WatchModel,
     active: Option<ActiveWatch>,
+    window: WatchWindow,
     #[cfg(test)]
     last_outcome: Option<axiom_test_support::WatchOutcome>,
     #[cfg(test)]
@@ -37,6 +40,7 @@ impl WatchLearner {
     }
 
     pub(crate) fn focus(&mut self, focus: &DeliveryFocus, now_ms: u64) {
+        self.window.replace(focus);
         let next = focused(focus);
         if same_post(self.active.as_ref(), next.as_ref()) {
             self.refresh_active(next, focus.watch_ms);
@@ -78,6 +82,19 @@ impl WatchLearner {
 
     pub(crate) fn model(&self) -> &WatchModel {
         &self.model
+    }
+
+    pub(crate) fn window(&self) -> &WatchWindow {
+        &self.window
+    }
+
+    pub(crate) fn current_watch(&self, post: Option<&PostId>) -> core::time::Duration {
+        let watched = self
+            .active
+            .as_ref()
+            .filter(|active| Some(&active.post) == post)
+            .map_or(0, |active| active.watched_ms);
+        core::time::Duration::from_millis(watched)
     }
 
     fn finish_departure(&mut self, focus: &DeliveryFocus, now_ms: u64) {

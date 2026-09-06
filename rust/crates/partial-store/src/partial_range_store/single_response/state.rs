@@ -9,6 +9,24 @@ pub(in crate::partial_range_store) struct SingleResponseState {
     pub(in crate::partial_range_store) contract: WholeBodyContract,
     pub(in crate::partial_range_store) storage: SingleResponseStorage,
     pub(in crate::partial_range_store) authority: SingleResponseAuthority,
+    pub(super) prefix: Option<super::prefix::StagedPrefix>,
+}
+
+impl SingleResponseState {
+    pub(in crate::partial_range_store) fn transient(
+        identity: TransferIdentity,
+        action: StoreAction,
+        contract: WholeBodyContract,
+    ) -> Self {
+        Self {
+            identity,
+            owner: ResponseOwner::Granted(action),
+            contract,
+            authority: SingleResponseAuthority::ActionScoped,
+            storage: SingleResponseStorage::Memory,
+            prefix: None,
+        }
+    }
 }
 
 #[derive(Clone, Eq, PartialEq)]
@@ -85,6 +103,10 @@ impl ResponseOwner {
 }
 
 impl SingleResponseAuthority {
+    pub(super) fn exposes_staged_prefix(&self) -> bool {
+        matches!(self, Self::Durable(_) | Self::ActionScoped)
+    }
+
     pub(super) fn generation(&self) -> Option<&HttpGenerationLease> {
         match self {
             Self::Durable(generation) => Some(generation),

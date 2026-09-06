@@ -4,6 +4,9 @@ import 'package:flutter/rendering.dart';
 import 'package:ghostr/features/video_catalog/presentation/feed_state.dart';
 import 'package:ghostr/features/video_catalog/presentation/feed_swipe_physics.dart';
 
+part 'feed_page_view_gestures.dart';
+part 'feed_page_view_overlay.dart';
+
 final class FeedPageModel {
   FeedPageModel({
     required Iterable<Key> keys,
@@ -29,12 +32,14 @@ class FeedPageView extends StatefulWidget {
     required this.model,
     required this.onPageChanged,
     required this.itemBuilder,
+    this.overlay,
     super.key,
   });
 
   final FeedPageModel model;
   final ValueChanged<int> onPageChanged;
   final IndexedWidgetBuilder itemBuilder;
+  final Widget? overlay;
 
   @override
   State<FeedPageView> createState() => _FeedPageViewState();
@@ -63,6 +68,7 @@ class _FeedPageViewState extends State<FeedPageView> {
       widget.model.rosterRevision,
     );
     final sameActive = oldWidget.model.activeKey == widget.model.activeKey;
+    if (sameRoster && sameActive && _activePointer != null) return;
     final reported = _reportedKey;
     final pending = reported != widget.model.activeKey;
     final retained = reported != null && _pageForKey(reported) != null;
@@ -80,18 +86,25 @@ class _FeedPageViewState extends State<FeedPageView> {
       onPointerCancel: _cancelGesture,
       child: NotificationListener<ScrollEndNotification>(
         onNotification: _scrollEnded,
-        child: PageView.builder(
-          controller: _controller,
-          scrollDirection: Axis.vertical,
-          dragStartBehavior: DragStartBehavior.down,
-          physics: _physics,
-          pageSnapping: false,
-          allowImplicitScrolling: true,
-          scrollCacheExtent: _transportRescuePageCache,
-          itemCount: widget.model.keys.length,
-          onPageChanged: _pageChanged,
-          itemBuilder: _buildPage,
-          findChildIndexCallback: _pageForKey,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            PageView.builder(
+              controller: _controller,
+              scrollDirection: Axis.vertical,
+              dragStartBehavior: DragStartBehavior.down,
+              physics: _physics,
+              pageSnapping: false,
+              allowImplicitScrolling: true,
+              scrollCacheExtent: _transportRescuePageCache,
+              itemCount: widget.model.keys.length,
+              onPageChanged: _pageChanged,
+              itemBuilder: _buildPage,
+              findChildIndexCallback: _pageForKey,
+            ),
+            if (widget.overlay case final overlay?)
+              _FeedPageScrollOverlay(controller: _controller, child: overlay),
+          ],
         ),
       ),
     );
@@ -107,66 +120,6 @@ class _FeedPageViewState extends State<FeedPageView> {
   int? _pageForKey(Key key) {
     final index = widget.model.keys.indexOf(key);
     return index < 0 ? null : index;
-  }
-
-  void _pageChanged(int index) {
-    _candidateKey = widget.model.keys[index];
-  }
-
-  bool _scrollEnded(ScrollEndNotification notification) {
-    if (_activePointer != null) return false;
-    final candidate = _candidateKey;
-    _candidateKey = null;
-    _commit(candidate);
-    return false;
-  }
-
-  void _beginGesture(PointerDownEvent event) {
-    if (_activePointer != null) return;
-    _activePointer = event.pointer;
-    _gestureKeys = List<Key>.of(widget.model.keys);
-    _candidateKey = null;
-    _gesture.begin();
-  }
-
-  void _endGesture(PointerUpEvent event) {
-    if (_activePointer != event.pointer) return;
-    final target = _gesture.targetPage;
-    final targetKey = target == null ? null : _gestureKey(target);
-    final currentTarget = targetKey == null ? null : _pageForKey(targetKey);
-    if (target != null && currentTarget == null) {
-      _gesture.targetPage = widget.model.activePage;
-    }
-    _gesture.end();
-    if (currentTarget != null && _controller.hasClients) {
-      _controller.jumpToPage(currentTarget);
-    }
-    _activePointer = null;
-    _gestureKeys = null;
-    _candidateKey = null;
-    if (currentTarget != null) _commit(targetKey);
-  }
-
-  Key? _gestureKey(int index) {
-    final keys = _gestureKeys;
-    if (keys == null || index < 0 || index >= keys.length) return null;
-    return keys[index];
-  }
-
-  void _commit(Key? key) {
-    if (key == null || key == _reportedKey) return;
-    final index = _pageForKey(key);
-    if (index == null) return;
-    _reportedKey = key;
-    widget.onPageChanged(index);
-  }
-
-  void _cancelGesture(PointerCancelEvent event) {
-    if (_activePointer != event.pointer) return;
-    _activePointer = null;
-    _gestureKeys = null;
-    _candidateKey = null;
-    _gesture.reset();
   }
 
   void _reposition() {

@@ -1,4 +1,3 @@
-use core::sync::atomic::{AtomicU64, Ordering};
 use ghostr_delivery::cache_registry::CacheRegistry;
 use ghostr_delivery::debug::network::NetworkThrottle;
 use ghostr_delivery::delivery_events::{DeliveryHandle, DeliveryNetworkStatus};
@@ -14,7 +13,6 @@ use ghostr_net::outbound_media_client::MediaHttpRequests;
 use ghostr_partial_store::partial_range_store::PartialRangeStore;
 use std::path::PathBuf;
 use std::sync::Arc;
-use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::sync::watch;
 
 pub(super) fn start(
@@ -58,16 +56,7 @@ fn manager_config(
 }
 
 fn unique_stats_root() -> PathBuf {
-    static NEXT_ROOT: AtomicU64 = AtomicU64::new(1);
-    let root = std::env::temp_dir().join(format!(
-        "ghostr-player-preparation-manager-{}-{}-{}",
-        std::process::id(),
-        SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .expect("test fixture precondition must hold")
-            .as_nanos(),
-        NEXT_ROOT.fetch_add(1, Ordering::Relaxed),
-    ));
+    let root = crate::api::tests::store_paths::unique("ghostr-player-preparation-manager");
     std::fs::create_dir_all(&root).expect("test fixture precondition must hold");
     root
 }
