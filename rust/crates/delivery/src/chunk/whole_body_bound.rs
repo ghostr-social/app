@@ -13,6 +13,10 @@ impl WholeBodyBoundDiscovered {
             total_bytes,
         }
     }
+
+    pub(crate) const fn exhaustion(self) -> Option<ghostr_engine::adaptive::WholeBodyExhaustion> {
+        ghostr_engine::adaptive::WholeBodyExhaustion::new(self.maximum_bytes, self.total_bytes)
+    }
 }
 
 impl Display for WholeBodyBoundDiscovered {

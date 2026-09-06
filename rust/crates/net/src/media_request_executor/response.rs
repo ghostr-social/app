@@ -10,15 +10,18 @@ pub struct MediaResponse {
     lease: Option<RequestLease>,
     failed: bool,
     redirect_admission_wait_nanos: u64,
+    selection: selection::ResponseSelection,
 }
 
 mod head;
+pub(super) mod selection;
 
 impl MediaResponse {
     pub(super) fn new(
         inner: Response,
         lease: RequestLease,
         redirect_admission_wait: Duration,
+        selection: selection::ResponseSelection,
     ) -> Self {
         Self {
             head: head::ResponseHead::capture(&inner),
@@ -27,6 +30,7 @@ impl MediaResponse {
             failed: false,
             redirect_admission_wait_nanos: u64::try_from(redirect_admission_wait.as_nanos())
                 .unwrap_or(u64::MAX),
+            selection,
         }
     }
 
@@ -46,6 +50,14 @@ impl MediaResponse {
         self.head.content_length
     }
 
+    pub fn request_selection(&self) -> Option<ghostr_engine::representation::RequestSelection> {
+        self.selection.identity()
+    }
+
+    pub fn retention(&self) -> crate::media_retention::MediaRetention {
+        self.selection.retention(self.headers(), self.url())
+    }
+
     pub fn redirect_admission_wait(&self) -> Duration {
         Duration::from_nanos(self.redirect_admission_wait_nanos)
     }
@@ -63,7 +75,9 @@ impl MediaResponse {
         if result.is_err() || matches!(result, Ok(None)) {
             self.failed = result.is_err();
             self.inner = None;
-            self.lease = None;
+            if let Some(lease) = self.lease.take() {
+                drop(lease.abandon_body().await?);
+            }
         }
         result
     }
@@ -80,9 +94,16 @@ impl MediaResponse {
             lease.record_response_bytes(bytes.len() as u64);
             lease.received_body(bytes.len() as u64)?;
         } else {
-            lease.complete_body()?;
+            self.complete_body().await?;
         }
         Ok(chunk)
+    }
+
+    async fn complete_body(&mut self) -> anyhow::Result<()> {
+        if let Some(lease) = self.lease.take() {
+            drop(lease.complete_body().await?);
+        }
+        Ok(())
     }
 
     /// # Errors

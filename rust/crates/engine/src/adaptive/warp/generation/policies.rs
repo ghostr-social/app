@@ -1,6 +1,9 @@
 use crate::adaptive::ActionValue;
 use crate::origin_model::OriginAdmissionIntent;
 
+mod navigation;
+pub(crate) use navigation::NavigationPreparationPolicy;
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum HlsGenerationPolicy {
     LegacyWholeStage,
@@ -32,6 +35,7 @@ pub(crate) struct WarpGenerationPolicies {
     pub(crate) promotion: PromotionGenerationPolicy,
     pub(crate) range_alias: RangeAliasGenerationPolicy,
     pub(crate) origin_admission: OriginAdmissionGenerationPolicy,
+    pub(crate) navigation: NavigationPreparationPolicy,
 }
 
 impl WarpGenerationPolicies {
@@ -42,6 +46,7 @@ impl WarpGenerationPolicies {
             promotion: PromotionGenerationPolicy::ObservedResponse,
             range_alias: RangeAliasGenerationPolicy::PromotableDominance,
             origin_admission: OriginAdmissionGenerationPolicy::TypedIntent,
+            navigation: NavigationPreparationPolicy::BidirectionalWindow,
         }
     }
 

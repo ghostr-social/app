@@ -14,6 +14,7 @@ impl PartialRangeStore {
     /// Returns an error when persisted store artifacts cannot be enumerated or removed.
     pub async fn clear(&self) -> Result<()> {
         let _update = self.representation_updates.write().await;
+        self.transform_recovery.clear();
         self.revoke_all_actions().await;
         self.clear_representation_bindings().await;
         let mut keys = stored_keys(&self.root).await?;

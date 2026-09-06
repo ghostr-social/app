@@ -23,8 +23,8 @@ use crate::origin_model::OriginModel;
 use crate::{ActionId, PostId};
 
 pub(crate) use policies::{
-    HlsGenerationPolicy, OriginAdmissionGenerationPolicy, PromotionGenerationPolicy,
-    RangeAliasGenerationPolicy, WarpGenerationPolicies,
+    HlsGenerationPolicy, NavigationPreparationPolicy, OriginAdmissionGenerationPolicy,
+    PromotionGenerationPolicy, RangeAliasGenerationPolicy, WarpGenerationPolicies,
 };
 
 #[derive(Clone, Copy)]

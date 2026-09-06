@@ -16,10 +16,7 @@ fn exact_fallback_coverage_cancels_only_redundant_transport() {
     let mut active = InFlightChunks::new();
     let covered = insert(&mut active, &post, ByteRange::new(0, 32), &identity);
     let useful = insert(&mut active, &post, ByteRange::new(32, 64), &identity);
-    let present = HashMap::from([(
-        post,
-        vec![ByteRange::new(16, 32), ByteRange::new(0, 16)],
-    )]);
+    let present = HashMap::from([(post, vec![ByteRange::new(16, 32), ByteRange::new(0, 16)])]);
 
     active.cancel_covered_without_body(&present, &HashMap::new(), &catalog);
 

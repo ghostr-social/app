@@ -9,7 +9,7 @@ use reqwest::{Client, ClientBuilder, RequestBuilder, Url};
 use std::sync::Arc;
 
 pub const MEDIA_CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
-pub const MEDIA_REQUEST_TIMEOUT: Duration = Duration::from_secs(300);
+pub const MEDIA_REQUEST_TIMEOUT: Duration = Duration::from_mins(5);
 
 #[derive(Clone, Copy)]
 pub struct MediaHttpTimeouts {

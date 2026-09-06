@@ -25,3 +25,9 @@ pub(crate) async fn next_request_while_streaming(
         )
     })
 }
+
+pub(crate) async fn send_bytes(request: &ActiveRequest, count: usize) {
+    for _ in 0..count {
+        assert!(request.send_byte().await, "first range remains active");
+    }
+}

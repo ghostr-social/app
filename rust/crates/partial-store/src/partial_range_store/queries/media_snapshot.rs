@@ -13,7 +13,7 @@ impl PartialRangeStore {
     pub async fn media_snapshot(&self, key: &str) -> Result<StoredMediaSnapshot> {
         validate_key(key)?;
         let _update = self.observe_key(key).await?;
-        if let Some(response) = self.session_response(key).await {
+        if let Some(response) = self.readable_session_response(key).await {
             return session::snapshot(self, key, &response).await;
         }
         let provisional = provisional::capture(self, key).await;

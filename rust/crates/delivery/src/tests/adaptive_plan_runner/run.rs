@@ -82,6 +82,8 @@ fn plan(scenario: &PlanScenario<'_>, context: &RunContext<'_>) -> PlannedWork {
             connection_ceiling as u64,
         )),
         capacity_revision: context.measurements.capacity_revision,
+        current_watch: core::time::Duration::ZERO,
+        watch_window: &crate::qoe::WatchWindow::default(),
         observed_at_ms: 1_000,
         demanded: &demanded,
     };

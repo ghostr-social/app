@@ -55,13 +55,15 @@ pub(super) async fn observe(
             Some(SourceGeneration::try_new(url, etag, 1_000).expect("fixture")),
             ResponseWriteMode::Sparse,
             HttpResponseEvidence {
+                request_selection: None,
                 final_url: url.into(),
                 status: 206,
                 content_type: None,
                 validator: Some(validator),
                 observed: 1.into(),
             },
-        ).with_retention(MediaRetention::Public),
+        )
+        .with_retention(MediaRetention::Public),
     );
     store.set_total_len("post", 1_000).await.expect("fixture");
 }

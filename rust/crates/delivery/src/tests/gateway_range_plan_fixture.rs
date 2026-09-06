@@ -1,16 +1,15 @@
-use crate::delivery_events::{DeliveryFocus, FocusItem};
 use crate::manager::plan::axiom_test_support::planned_work;
 use crate::manager::plan::{PlanInputs, PlannedWork};
 use crate::manager::retry::{RetryBook, RetryPolicy};
-use crate::manager::state::DeliveryState;
 use crate::tests::adaptive_plan_fixture::playback_for;
-use crate::tests::media_timeline_fixture::install_classic_timeline;
 use core::time::Duration;
 use ghostr_engine::adaptive::StorageSnapshot;
-use ghostr_engine::catalog::LearnedFacts;
 use ghostr_engine::host_stats::{HostStats, ThroughputSample};
-use ghostr_engine::{ByteRange, DataUsageLevel, DeliveryKind, EngineParams, PostId, VideoMeta};
+use ghostr_engine::{ByteRange, PostId};
 use std::collections::{HashMap, HashSet};
+
+mod state;
+use state::state;
 
 pub(super) const OBJECT_BYTES: u64 = 20_000;
 
@@ -57,6 +56,8 @@ fn build_demand_plan(demanded: ByteRange, buffered: bool, size_bytes: u64) -> Pl
             packet_loss_bps: 0,
             resource_feedback: None,
             capacity_revision: 0,
+            current_watch: Duration::ZERO,
+            watch_window: &crate::qoe::WatchWindow::default(),
             observed_at_ms: 1,
             demanded: &HashMap::from([(post.clone(), demanded)]),
         },
@@ -72,29 +73,4 @@ fn stats(buffered: bool) -> HostStats {
         stats.record_host_throughput("media.example", sample);
     }
     stats
-}
-
-fn state(post: &PostId, size_bytes: u64) -> DeliveryState {
-    let meta = VideoMeta {
-        urls: vec!["https://media.example/video.mp4".into()],
-        delivery: DeliveryKind::Progressive,
-        sha256: None,
-        size_bytes: Some(size_bytes),
-        duration_ms: Some(1_000),
-    };
-    let mut state = DeliveryState::new(EngineParams::default(), DataUsageLevel::Balanced);
-    let item = FocusItem {
-        post: post.clone(),
-        meta,
-    };
-    state.apply_focus(DeliveryFocus::compatibility(vec![item], 0, 0), 0);
-    state.catalog_mut().learn(
-        post,
-        LearnedFacts {
-            accept_ranges: Some(true),
-            ..LearnedFacts::default()
-        },
-    );
-    install_classic_timeline(&mut state, post, 100, 100);
-    state
 }

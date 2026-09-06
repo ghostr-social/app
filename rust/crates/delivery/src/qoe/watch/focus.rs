@@ -1,21 +1,17 @@
-use super::ActiveWatch;
+use super::{ActiveWatch, WatchCandidate};
 use crate::delivery_events::{DeliveryFocus, FocusTransition, TransportRescueReason};
 use core::cmp::Ordering;
-use ghostr_engine::watch_model::{
-    WatchCensor, WatchContext, WatchKey, WatchNavigation, WatchSampleKind,
-};
+use ghostr_engine::watch_model::{WatchCensor, WatchNavigation, WatchSampleKind};
 use ghostr_engine::PostId;
 
 pub(super) fn focused(focus: &DeliveryFocus) -> Option<ActiveWatch> {
     let item = focus
         .items
         .get(focus.current_index.min(focus.items.len().checked_sub(1)?))?;
+    let candidate = WatchCandidate::from_item(item);
     Some(ActiveWatch {
-        post: item.post.clone(),
-        context: WatchContext::new(
-            WatchKey::digest(item.post.as_str()),
-            item.meta.duration_ms.filter(|duration| *duration > 0),
-        ),
+        post: candidate.post,
+        context: candidate.context,
         watched_ms: focus.watch_ms,
         terminal: false,
         generation: 0,

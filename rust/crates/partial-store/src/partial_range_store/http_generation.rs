@@ -79,6 +79,7 @@ impl PartialRangeStore {
                     && state.key.as_ref().is_some_and(|key| {
                         key.final_url() == generation.final_url()
                             && key.validator() == validator.as_ref()
+                            && key.request_selection() == generation.request_selection()
                     })
             })
     }

@@ -6,7 +6,7 @@ use super::frontier::{discovery_demand, upcoming_candidates};
 use super::plan::{AllocationPlan, DiscoveryDemand, NextReserveEvidence};
 use super::ranges::missing;
 use super::reserve_window::{build as build_ready_reserve, ReserveInputs, ReserveModePolicy};
-use super::reserves::{critical_slots, planned_bytes, planned_gain, sibling_planned_bytes};
+use super::reserves::{planned_bytes, planned_gain, sibling_planned_bytes};
 use super::resources::{endangered, speculative_budget, upcoming_depth_ms};
 use super::{CandidateSnapshot, PlayabilitySnapshot};
 
@@ -35,7 +35,7 @@ impl AdaptivePlayabilityPolicy {
         reserve_next(&mut plan, snapshot, &lane, reserve_policy);
         lane.append_depth(&mut plan, snapshot);
         append_followup(&mut plan, snapshot, &lane);
-        plan.retained = retained(snapshot, emergency, critical_slots(&plan));
+        plan.retained = retained(snapshot, emergency, &plan);
         finalize(&mut plan, snapshot);
         plan
     }

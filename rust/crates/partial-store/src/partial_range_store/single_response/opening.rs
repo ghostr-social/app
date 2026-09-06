@@ -50,6 +50,7 @@ impl<'a> SingleResponseOpening<'a> {
             contract: self.contract,
             storage,
             authority: self.authority,
+            prefix: None,
         }
     }
 }

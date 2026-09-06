@@ -71,6 +71,7 @@ pub(crate) mod wake;
 pub(crate) mod wake_lane;
 pub(crate) mod wake_select;
 mod whole_body_limits;
+mod body_renewal;
 pub(crate) mod workers;
 
 use crate::cache_registry::CacheRegistry;

@@ -6,13 +6,23 @@ use ghostr_engine::PostId;
 use ghostr_partial_store::partial_range_store::StoredMediaSnapshot;
 use std::collections::HashMap;
 
+mod history;
+
+pub(super) struct PlaybackStartups {
+    pub(super) forward: Vec<StartupCertificate>,
+    pub(super) previous: Vec<StartupCertificate>,
+}
+
 impl DeliveryWorker {
     pub(super) fn startup_certificates(
         &self,
-        plan: &AllocationPlan,
+        planned: &crate::manager::plan::PlannedWork,
         snapshots: &HashMap<PostId, StoredMediaSnapshot>,
-    ) -> Vec<StartupCertificate> {
-        startup_certificates(&self.state, plan, snapshots)
+    ) -> PlaybackStartups {
+        PlaybackStartups {
+            forward: startup_certificates(&self.state, &planned.plan, snapshots),
+            previous: history::certificates(&self.state, planned.snapshot.as_ref(), snapshots),
+        }
     }
 }
 
@@ -40,7 +50,15 @@ fn startup_certificate(
     else {
         return None;
     };
-    let post = &candidate.post;
+    issue(state, &candidate.post, startup, snapshots)
+}
+
+fn issue(
+    state: &DeliveryState,
+    post: &PostId,
+    startup: &ghostr_engine::media_timeline::StartupFootprint,
+    snapshots: &HashMap<PostId, StoredMediaSnapshot>,
+) -> Option<StartupCertificate> {
     let binding = state.catalog().binding(post)?;
     let snapshot = snapshots.get(post)?;
     if !snapshot

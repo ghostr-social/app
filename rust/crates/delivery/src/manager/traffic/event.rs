@@ -3,11 +3,14 @@ use core::time::Duration;
 use tokio::time::Instant;
 
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub(crate) struct TransferKey(u64);
+pub(crate) struct TransferKey(u64, u64);
 
 impl TransferKey {
+    pub(crate) fn next_window(self) -> Self {
+        Self(self.0, self.1.checked_add(1).expect("traffic window exhausted"))
+    }
     pub(crate) fn new(value: u64) -> Self {
-        Self(value)
+        Self(value, 0)
     }
 }
 
@@ -19,6 +22,7 @@ pub(crate) enum TrafficEvent {
         ttfb: Duration,
         at: Instant,
     },
+    Resumed { transfer: TransferKey, host: String, at: Instant },
     Progress {
         transfer: TransferKey,
         bytes: u64,
@@ -33,7 +37,7 @@ pub(crate) enum TrafficEvent {
 impl TrafficEvent {
     pub(super) fn at(&self) -> Instant {
         match self {
-            Self::Opened { at, .. } | Self::Progress { at, .. } | Self::Closed { at, .. } => *at,
+            Self::Opened { at, .. } | Self::Resumed { at, .. } | Self::Progress { at, .. } | Self::Closed { at, .. } => *at,
         }
     }
 }

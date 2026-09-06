@@ -152,7 +152,7 @@ pub(super) fn resources(kind: &super::super::ActionKind) -> super::super::Resour
 
 pub(super) fn request_resources(request: RetrievalRequest) -> super::super::ResourceCost {
     let bytes = request.immediate_network_bytes();
-    super::super::ResourceCost::new(bytes, bytes, 0, 1)
+    super::super::ResourceCost::new(request.initial_network_bytes(), bytes, 0, 1)
 }
 
 fn action_bytes(kind: &super::super::ActionKind) -> u64 {

@@ -2,7 +2,7 @@ use super::DeliveryState;
 use ghostr_engine::PostId;
 use std::collections::HashSet;
 
-const PLANNING_WINDOW_BEHIND: usize = 3;
+const PLANNING_WINDOW_BEHIND: usize = 5;
 const PLANNING_WINDOW_AHEAD: usize = 24;
 
 impl DeliveryState {

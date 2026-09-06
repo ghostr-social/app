@@ -35,7 +35,9 @@ impl PartialRangeStore {
             return Ok(None);
         }
         let canonical = self.generation_for(key, identity.source().as_str()).await;
-        if self.live_single_response_is_active(key).await || canonical.as_ref() != Some(generation)
+        if self.live_single_response_is_active(key).await
+            || self.has_readable_staged_prefix(key).await
+            || canonical.as_ref() != Some(generation)
         {
             return Ok(Some(ResponseOpenResult::RequiresIndependentObject));
         }

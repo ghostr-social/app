@@ -77,25 +77,17 @@ impl InternetAllowance {
     pub(super) fn reserve(&self, maximum_bytes: u64) -> Result<InternetReservation> {
         let mut state = self.lock();
         ensure!(!state.failed, "Internet accounting is unavailable");
-        let reserved = state
-            .usage
-            .reserved_bytes
-            .checked_add(maximum_bytes)
-            .context("Internet reservation overflow")?;
-        let total = state
-            .usage
-            .charged_bytes
-            .checked_add(reserved)
-            .context("Internet usage overflow")?;
-        if let InternetDataLimit::Bytes(limit) = state.limit {
-            ensure!(total <= limit, "cumulative Internet allowance exhausted");
+        if maximum_bytes == 0 {
+            return Ok(InternetReservation::new(self.clone(), 0));
         }
-        state.usage.reserved_bytes = reserved;
-        state.persist()?;
+        state.reserve_bytes(maximum_bytes)?;
         Ok(InternetReservation::new(self.clone(), maximum_bytes))
     }
 
     fn settle(&self, reserved: u64, charged: u64) -> Result<()> {
+        if reserved == 0 && charged == 0 {
+            return Ok(());
+        }
         let mut state = self.lock();
         state.usage.reserved_bytes = state
             .usage
@@ -118,6 +110,24 @@ impl InternetAllowance {
 }
 
 impl State {
+    fn reserve_bytes(&mut self, maximum: u64) -> Result<()> {
+        let reserved = self
+            .usage
+            .reserved_bytes
+            .checked_add(maximum)
+            .context("Internet reservation overflow")?;
+        let total = self
+            .usage
+            .charged_bytes
+            .checked_add(reserved)
+            .context("Internet usage overflow")?;
+        if let InternetDataLimit::Bytes(limit) = self.limit {
+            ensure!(total <= limit, "cumulative Internet allowance exhausted");
+        }
+        self.usage.reserved_bytes = reserved;
+        self.persist()
+    }
+
     fn persist(&mut self) -> Result<()> {
         if let Some(disk) = &self.disk {
             if let Err(error) = disk.save(self.usage) {

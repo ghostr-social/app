@@ -19,12 +19,13 @@ fn exhausted_unknown_whole_cap_advances_to_the_next_geometric_probe() {
 }
 
 #[test]
-fn exhausted_cap_is_deferred_until_the_network_envelope_can_make_progress() {
+fn exhausted_cap_can_advance_with_a_renewable_network_window() {
     let maximum = crate::adaptive::REQUEST_SLICE_BYTES * 4;
     let observed = maximum + 1;
     let deferred = decision(maximum, observed, maximum);
     let action = whole_action(&deferred, maximum * 4);
-    assert!(!deferred.admissible_action_ids.contains(&action.node.id));
+    assert!(deferred.admissible_action_ids.contains(&action.node.id));
+    assert_eq!(action.node.resources.network_bytes, crate::adaptive::REQUEST_SLICE_BYTES);
 
     let recovered_burst = observed + crate::adaptive::REQUEST_SLICE_BYTES;
     let recovered = decision(maximum, observed, recovered_burst);

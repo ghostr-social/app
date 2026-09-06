@@ -125,7 +125,11 @@ final class FeedPreparationReducer {
       return FeedPlaybackPreparation.managed(
         revision: previous.revision!,
         current: promoted,
-        upcoming: _retained(previous.upcoming, upcoming),
+        upcoming: _retained([
+          if (previous.current?.isStructurallyStartable == true)
+            previous.current!,
+          ...previous.upcoming,
+        ], upcoming),
       );
     }
     return projectWindow(current, upcoming);

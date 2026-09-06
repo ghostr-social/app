@@ -1,5 +1,12 @@
 part of 'feed_preparation_fixture.dart';
 
+VideoPlaybackPort _defaultPlayback(String url) {
+  return GatewayVideoPlaybackPort(
+    delegate: VideoPlayerPlaybackPort(),
+    gateway: FakeProgressivePlaybackGateway(immediatePlaybackUrl: url),
+  );
+}
+
 VideoPost _preparationPost(int index) {
   final id = 'p$index';
   final remote = VideoMediaSource.remote('https://media.test/$id.mp4');

@@ -51,6 +51,9 @@ impl TrafficMeter {
                     self.note_open(&host, ttfb, stats);
                 }
             }
+            TrafficEvent::Resumed { transfer, host, at } => {
+                if self.timing.open(transfer, host.clone(), at) { self.observe_concurrency(&host); }
+            }
             TrafficEvent::Progress {
                 transfer, bytes, ..
             } => self.progress(transfer, bytes),

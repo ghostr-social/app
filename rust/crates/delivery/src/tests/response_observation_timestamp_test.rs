@@ -43,6 +43,7 @@ fn response() -> OpenedResponse {
         None,
         ResponseWriteMode::Sparse,
         HttpResponseEvidence {
+            request_selection: None,
             final_url: SOURCE.to_owned(),
             status: 200,
             content_type: Some("video/mp4".to_owned()),

@@ -13,14 +13,21 @@ import 'package:ghostr/features/session/presentation/session_cubit.dart';
 import 'package:ghostr/app/session_gate.dart';
 import 'package:ghostr/features/settings/domain/app_settings_repository.dart';
 import 'package:ghostr/features/video_catalog/domain/feed_focus_port.dart';
+import 'package:ghostr/features/video_catalog/domain/video_delivery_updates.dart';
 import 'package:ghostr/shared/media/video_playback_port.dart';
 import 'package:ghostr/shared/theme/app_theme.dart';
 
 class GhostrApp extends StatefulWidget {
-  const GhostrApp({required this.dependencies, this.feedFocus, super.key});
+  const GhostrApp({
+    required this.dependencies,
+    this.feedFocus,
+    this.deliveryUpdates,
+    super.key,
+  });
 
   final AppDependencies dependencies;
   final FeedFocusSink? feedFocus;
+  final VideoDeliveryUpdates? deliveryUpdates;
 
   @override
   State<GhostrApp> createState() => _GhostrAppState();
@@ -39,7 +46,8 @@ class _GhostrAppState extends State<GhostrApp> {
   void didUpdateWidget(covariant GhostrApp oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (identical(oldWidget.dependencies, widget.dependencies) &&
-        identical(oldWidget.feedFocus, widget.feedFocus)) {
+        identical(oldWidget.feedFocus, widget.feedFocus) &&
+        identical(oldWidget.deliveryUpdates, widget.deliveryUpdates)) {
       return;
     }
     _controllers = _createControllers();
@@ -117,6 +125,7 @@ class _GhostrAppState extends State<GhostrApp> {
     return AppControllerFactory(
       widget.dependencies,
       feedFocus: widget.feedFocus,
+      deliveryUpdates: widget.deliveryUpdates,
     );
   }
 }

@@ -98,3 +98,5 @@ mod warp_range_noncompliant_unobserved_generation_test;
 mod warp_request_envelope_fixture;
 #[path = "warp_unknown_whole_probe_classification_test.rs"]
 mod warp_unknown_whole_probe_classification_test;
+#[path = "warp_continuous_body_budget_test.rs"]
+mod warp_continuous_body_budget_test;

@@ -13,7 +13,7 @@ async fn a_preexisting_gossip_relay_is_replaced_by_the_owned_policy() {
     let client = Arc::new(Client::default());
     let stale_options = RelayOptions::new()
         .flags(RelayServiceFlags::PING | RelayServiceFlags::GOSSIP)
-        .retry_interval(core::time::Duration::from_secs(60));
+        .retry_interval(core::time::Duration::from_mins(1));
     client
         .pool()
         .add_relay(RELAY, stale_options)

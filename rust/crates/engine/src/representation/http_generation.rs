@@ -7,6 +7,8 @@ use serde::{Deserialize, Serialize};
 pub struct HttpGenerationKey {
     final_url: String,
     validator: Option<EvidenceValidator>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    request_selection: Option<super::RequestSelection>,
 }
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
@@ -48,6 +50,7 @@ impl HttpGenerationKey {
         Ok(Self {
             final_url,
             validator,
+            request_selection: None,
         })
     }
 
@@ -57,6 +60,15 @@ impl HttpGenerationKey {
 
     pub const fn validator(&self) -> Option<&EvidenceValidator> {
         self.validator.as_ref()
+    }
+
+    pub const fn request_selection(&self) -> Option<super::RequestSelection> {
+        self.request_selection
+    }
+
+    pub fn with_request_selection(mut self, selection: Option<super::RequestSelection>) -> Self {
+        self.request_selection = selection;
+        self
     }
 }
 

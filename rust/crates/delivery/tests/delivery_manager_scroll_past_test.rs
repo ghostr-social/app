@@ -26,6 +26,12 @@ async fn delivery_manager_cancels_scrolled_past_transfers() {
     let root = temp_directory("ghostr-delivery-scroll");
     seed_overall_throughput(&root, RANGE_BYTES);
     let harness = start_harness_at(root, serial_options());
+    // Keep the fixture on the bounded range path even when whole GETs are eligible.
+    harness
+        .store
+        .set_storage_budget(2 * RANGE_BYTES)
+        .await
+        .expect("bounded range cache");
 
     harness.handle.update_focus(focus_now(
         vec![sized_item("aa11", &stalled, STALLED_TOTAL_BYTES, 1_000)],

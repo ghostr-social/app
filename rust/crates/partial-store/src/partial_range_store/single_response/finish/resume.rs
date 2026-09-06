@@ -46,5 +46,7 @@ fn resumable_generation(state: &SingleResponseState) -> Option<SourceGeneration>
     let EvidenceValidator::StrongEtag(etag) = key.validator()? else {
         return None;
     };
-    SourceGeneration::try_new(key.final_url(), etag, expected_bytes).ok()
+    SourceGeneration::try_new(key.final_url(), etag, expected_bytes)
+        .ok()
+        .map(|generation| generation.with_request_selection(key.request_selection()))
 }

@@ -70,12 +70,16 @@ impl CatalogEntry {
         observed: EvidenceTime,
     ) -> Option<()> {
         let final_url = observation.final_url.as_deref().unwrap_or(url);
-        let candidate = HttpGenerationKey::try_new(final_url, None).ok()?;
+        let candidate = HttpGenerationKey::try_new(final_url, None)
+            .ok()?
+            .with_request_selection(observation.request_selection);
         if let Some(current) = self.http_generations.get(url).cloned() {
             if !observed.is_after(current.observed) {
                 return None;
             }
-            if current.stamp.key().final_url() == final_url {
+            if current.stamp.key().final_url() == final_url
+                && current.stamp.key().request_selection() == observation.request_selection
+            {
                 return Some(());
             }
         }
@@ -90,7 +94,9 @@ impl CatalogEntry {
         observed: EvidenceTime,
     ) -> Option<()> {
         let final_url = observation.final_url.as_deref().unwrap_or(url);
-        let key = HttpGenerationKey::try_new(final_url, observation.validator.clone()).ok()?;
+        let key = HttpGenerationKey::try_new(final_url, observation.validator.clone())
+            .ok()?
+            .with_request_selection(observation.request_selection);
         if let Some(current) = self.http_generations.get(url).cloned() {
             if matches_key(current.stamp.authority(), &key) {
                 if observed.is_after(current.observed) {
@@ -175,6 +181,7 @@ impl CatalogEntry {
         let final_url = observation.final_url.as_deref().unwrap_or(url);
         (trusted
             && lease.key().final_url() == final_url
+            && lease.key().request_selection() == observation.request_selection
             && lease.key().validator() == observation.validator.as_ref())
         .then_some(())
     }

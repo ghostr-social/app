@@ -15,6 +15,7 @@ pub mod hls_prepared_session;
 #[cfg(feature = "video-debug-web")]
 pub mod media_origin;
 pub mod progressive;
+pub mod progressive_action_response;
 mod progressive_capability;
 pub mod progressive_delivery;
 pub mod progressive_hls;
@@ -48,7 +49,11 @@ pub fn temp_directory(prefix: &str) -> PathBuf {
         .as_nanos();
     let sequence = NEXT.fetch_add(1, Ordering::Relaxed);
     let process = std::process::id();
-    std::env::temp_dir().join(format!("{prefix}-{nonce}-{process}-{sequence}"))
+    let root = std::env::var_os("CARGO_TARGET_DIR")
+        .map(PathBuf::from)
+        .map(|path| path.join("test-stores").join("gateway"))
+        .unwrap_or_else(std::env::temp_dir);
+    root.join(format!("{prefix}-{nonce}-{process}-{sequence}"))
 }
 
 struct LocalMediaHttpClient(Client);

@@ -48,6 +48,7 @@ impl PartialRangeStore {
         result?;
         drop(entries);
         self.record_staged_progress(key, &state.owner, end).await;
+        self.publish_staged_prefix(&state, offset..end).await?;
         Ok(true)
     }
 
@@ -78,6 +79,10 @@ impl PartialRangeStore {
         disk::remove_if_present(&self.paths.single_response_commit(key)).await?;
         if received > 0 {
             self.release(received).await;
+        }
+        if state.readable_prefix().is_some() {
+            self.advance_content_revision(key).await;
+            self.changed.notify_waiters();
         }
         Ok(())
     }

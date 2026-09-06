@@ -9,7 +9,7 @@ mod book;
 mod circuit;
 
 pub(super) const INITIAL_BACKOFF: Duration = Duration::from_secs(2);
-pub(super) const MAX_BACKOFF: Duration = Duration::from_secs(300);
+pub(super) const MAX_BACKOFF: Duration = Duration::from_mins(5);
 pub(super) const PROBE_LEASE: Duration = Duration::from_secs(30);
 pub(super) const CIRCUIT_CAPACITY: usize = 256;
 pub(super) const RECOVERY_PROBES_PER_BATCH: usize = 1;

@@ -111,6 +111,11 @@ struct RecordedPlannerConfig {
     emergency_rescue_bps: u16,
     #[serde(default, skip_serializing_if = "is_legacy_reserve_progress")]
     reserve_progress_policy: RecordedReserveProgressPolicy,
+    #[serde(
+        default,
+        skip_serializing_if = "crate::adaptive::NavigationPreparationPolicy::is_legacy"
+    )]
+    navigation_preparation_policy: crate::adaptive::NavigationPreparationPolicy,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]

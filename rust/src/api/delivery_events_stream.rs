@@ -12,6 +12,9 @@ use crate::api::runtime::tracked_items::TrackedItems;
 use crate::engine::budget::params_for;
 use crate::engine::EngineParams;
 use crate::frb_generated::StreamSink;
+use core::future::Future as _;
+use core::pin::Pin;
+use core::task::Poll;
 use flutter_rust_bridge::frb;
 use ghostr_delivery::cache_registry::CacheRegistry;
 use ghostr_delivery::delivery_events::DeliveryHandle;
@@ -44,6 +47,17 @@ pub(crate) struct DeliveryWatchContext {
 }
 
 impl DeliveryWatchContext {
+    fn notifiers(&self) -> [Arc<tokio::sync::Notify>; 6] {
+        [
+            self.store.change_notifier(),
+            self.tracked.notifier(),
+            self.segmented.notifier(),
+            self.cache.notifier(),
+            plan_notifier(self.delivery.as_ref()),
+            self.capabilities.notifier(),
+        ]
+    }
+
     pub(super) fn new(
         store: Arc<PartialRangeStore>,
         segmented: SegmentedCache,
@@ -92,41 +106,33 @@ pub async fn ffi_delivery_events(sink: StreamSink<FfiDeliveryEvent>) -> anyhow::
 }
 
 pub(crate) async fn watch_delivery(out: impl EventOut, context: DeliveryWatchContext) {
-    let store_changed = context.store.change_notifier();
-    let items_changed = context.tracked.notifier();
-    let segmented_changed = context.segmented.notifier();
-    let cache_changed = context.cache.notifier();
-    let plan_changed = plan_notifier(context.delivery.as_ref());
+    let changed = context.notifiers();
     let mut emitted: HashMap<String, DeliverySnapshot> = HashMap::new();
     loop {
-        let store_wake = store_changed.notified();
-        let items_wake = items_changed.notified();
-        let segmented_wake = segmented_changed.notified();
-        let cache_wake = cache_changed.notified();
-        let plan_wake = plan_changed.notified();
-        tokio::pin!(
-            store_wake,
-            items_wake,
-            segmented_wake,
-            cache_wake,
-            plan_wake
-        );
-        store_wake.as_mut().enable();
-        items_wake.as_mut().enable();
-        segmented_wake.as_mut().enable();
-        cache_wake.as_mut().enable();
-        plan_wake.as_mut().enable();
+        let mut wakes: Vec<_> = changed
+            .iter()
+            .map(|signal| Box::pin(signal.notified()))
+            .collect();
+        for wake in &mut wakes {
+            wake.as_mut().enable();
+        }
         if !emit_pass(&out, &context, &mut emitted).await {
             return;
         }
-        tokio::select! {
-            () = store_wake => {},
-            () = items_wake => {},
-            () = segmented_wake => {},
-            () = cache_wake => {},
-            () = plan_wake => {},
-        }
+        wait_for_change(wakes).await;
     }
+}
+
+async fn wait_for_change(mut wakes: Vec<Pin<Box<tokio::sync::futures::Notified<'_>>>>) {
+    core::future::poll_fn(|context| {
+        for wake in &mut wakes {
+            if wake.as_mut().poll(context).is_ready() {
+                return Poll::Ready(());
+            }
+        }
+        Poll::Pending
+    })
+    .await;
 }
 
 async fn emit_pass(

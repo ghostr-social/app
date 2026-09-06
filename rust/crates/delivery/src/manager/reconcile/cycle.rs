@@ -130,6 +130,8 @@ impl DeliveryWorker {
             packet_loss_bps: self.ctx.network.profile().packet_loss_bps,
             resource_feedback: Some(self.resources.feedback(environment)),
             capacity_revision: cycle.capacity.revision().value(),
+            current_watch: self.qoe.current_watch(self.state.focus().current()),
+            watch_window: self.qoe.watch_window(),
             observed_at_ms: cycle.observed_at_ms,
             demanded: &cycle.demanded,
         };

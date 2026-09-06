@@ -14,6 +14,7 @@ impl DeliveryWorker {
             InternalEvent::HedgeTail(wake) => self.consume_hedge_tail_wake(wake),
             InternalEvent::Maintenance(maintenance) => self.apply_maintenance(maintenance).await,
             InternalEvent::TrafficChanged => self.absorb_traffic(),
+            InternalEvent::BodyRenewal(request) => self.renew_body(request),
         }
         self.refresh_observation_posts();
     }

@@ -6,7 +6,8 @@ use crate::adaptive::EpsilonBuckets;
 fn exact_pruning_keeps_a_quality_resource_tradeoff() {
     let mut efficient = action(1, 64_000, 100, 2_000);
     efficient.forecast = efficient.forecast.with_quality(100_000);
-    let mut higher_quality = action(2, 128_000, 100, 2_000);
+    let mut higher_quality = action(2, 64_000, 100, 2_000)
+        .with_resources(crate::adaptive::ResourceCost::new(128_000, 128_000, 0, 1));
     higher_quality.forecast = higher_quality.forecast.with_quality(200_000);
 
     let frontier = ActionFrontier::prune(

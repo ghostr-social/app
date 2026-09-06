@@ -148,10 +148,8 @@ fn change_kind(
     previous: Option<&DeliverySnapshot>,
     current: &DeliverySnapshot,
 ) -> Option<FfiDeliveryEventKind> {
-    if current.failed {
-        return Some(FfiDeliveryEventKind::Failed);
-    }
     match previous {
+        None if current.failed => Some(FfiDeliveryEventKind::Failed),
         None => Some(FfiDeliveryEventKind::Readiness),
         Some(previous) => changed_snapshot(previous, current),
     }

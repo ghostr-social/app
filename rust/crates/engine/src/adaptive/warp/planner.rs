@@ -3,6 +3,9 @@ mod demand;
 mod feasibility;
 mod feedback;
 mod least_risk;
+mod network_window;
+#[cfg(test)]
+mod network_window_test;
 mod replay;
 mod reserve;
 mod reserve_progress;
@@ -58,6 +61,7 @@ impl WarpPlanner {
         mut policies: WarpGenerationPolicies,
     ) -> WarpPlanningDecision {
         policies.hedging = self.config.profile == PlannerProfile::Lookahead1;
+        policies.navigation = self.config.navigation_preparation_policy;
         let planner_replay = PlannerReplayCapsule::capture(&input, self, policies);
         feedback::observe(self, &input);
         self.prepare_network(&input);

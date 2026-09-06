@@ -1,6 +1,6 @@
-use crate::manager::plan::axiom_test_support::planned_work;
 use super::OBSERVED_AT_MS;
 use crate::manager::inflight::ActiveAction;
+use crate::manager::plan::axiom_test_support::planned_work;
 use crate::manager::plan::{PlanInputs, PlannedWork};
 use crate::manager::retry::{RetryBook, RetryPolicy};
 use crate::manager::state::DeliveryState;
@@ -73,6 +73,8 @@ impl PlanEvidence {
                 packet_loss_bps: 0,
                 resource_feedback: None,
                 capacity_revision: 0,
+                current_watch: core::time::Duration::ZERO,
+                watch_window: &crate::qoe::WatchWindow::default(),
                 observed_at_ms: OBSERVED_AT_MS,
                 demanded: &self.demanded,
             },

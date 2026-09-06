@@ -6,14 +6,14 @@ import 'package:ghostr/core/media/playback_video_id.dart';
 import 'package:ghostr/core/media/prepared_progressive_playback.dart';
 import 'package:ghostr/core/media/video_media_source.dart';
 import 'package:ghostr/features/video_catalog/domain/video_post.dart';
-import 'package:ghostr/features/video_catalog/presentation/widgets/feed_card_action_rail.dart';
+import 'package:ghostr/features/video_catalog/presentation/widgets/feed_card_actions.dart';
+import 'package:ghostr/features/video_catalog/presentation/widgets/feed_card_overlay.dart';
 import 'package:ghostr/features/video_catalog/presentation/widgets/feed_card_menu.dart';
-import 'package:ghostr/features/video_catalog/presentation/widgets/feed_card_metadata.dart';
 import 'package:ghostr/features/video_catalog/presentation/widgets/feed_video_interaction.dart';
 import 'package:ghostr/shared/media/video_playback_port.dart';
-import 'package:ghostr/shared/theme/app_tokens.dart';
 
 export 'feed_card_actions.dart';
+export 'feed_card_overlay.dart';
 
 final class FeedCardPlayback {
   const FeedCardPlayback({
@@ -67,12 +67,14 @@ class FeedCard extends StatelessWidget {
     required this.post,
     required this.playback,
     required this.actions,
+    this.showOverlay = true,
     super.key,
   });
 
   final VideoPost post;
   final FeedCardPlayback playback;
   final FeedCardActions actions;
+  final bool showOverlay;
 
   @override
   Widget build(BuildContext context) {
@@ -101,12 +103,9 @@ class FeedCard extends StatelessWidget {
               ),
             ),
           ),
-          overlay: playback.preparedOnly
+          overlay: playback.preparedOnly || !showOverlay
               ? const SizedBox.shrink()
-              : Stack(
-                  fit: StackFit.expand,
-                  children: [const _FeedScrim(), _content()],
-                ),
+              : FeedCardOverlay(post: post, actions: actions),
         ),
       ),
     );
@@ -118,59 +117,6 @@ class FeedCard extends StatelessWidget {
         context,
         post: post,
         onBlockCreator: actions.moderation.onBlockCreator,
-      ),
-    );
-  }
-
-  Widget _content() {
-    return SafeArea(
-      child: LayoutBuilder(
-        builder: (_, constraints) => _overlay(constraints.maxHeight),
-      ),
-    );
-  }
-
-  Widget _overlay(double height) {
-    return Padding(
-      padding: const EdgeInsets.all(AppSpacing.md),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          Expanded(
-            child: FeedCardMetadata(
-              post: post,
-              onOpenHashtag: actions.navigation.onOpenHashtag,
-            ),
-          ),
-          const SizedBox(width: AppSpacing.md),
-          _rail(height - AppSpacing.md * 2),
-        ],
-      ),
-    );
-  }
-
-  Widget _rail(double height) {
-    final rail = FeedCardActionRail(post: post, actions: actions);
-    if (height >= AppSize.feedRailMinHeight) return rail;
-    return SizedBox(
-      height: height,
-      child: SingleChildScrollView(reverse: true, child: rail),
-    );
-  }
-}
-
-class _FeedScrim extends StatelessWidget {
-  const _FeedScrim();
-
-  @override
-  Widget build(BuildContext context) {
-    return const DecoratedBox(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [AppPalette.videoScrimTop, AppPalette.videoScrimBottom],
-        ),
       ),
     );
   }

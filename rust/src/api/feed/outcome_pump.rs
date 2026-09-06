@@ -10,6 +10,11 @@ use nostr_sdk::Event;
 use std::sync::Arc;
 use tokio::sync::mpsc;
 
+mod progress;
+
+const OUTCOMES_PER_TURN: usize = 32;
+type ReadyOutcomes = core::iter::Peekable<std::vec::IntoIter<RetrievalOutcome>>;
+
 #[frb(ignore)]
 pub(crate) struct OutcomeSinks {
     pub(crate) state: SharedFeedState,
@@ -29,19 +34,30 @@ pub(crate) async fn pump_outcomes(
     sinks: OutcomeSinks,
     mut outcomes: mpsc::UnboundedReceiver<RetrievalOutcome>,
 ) {
-    while let Some(outcome) = outcomes.recv().await {
-        apply_outcome(&sinks, outcome).await;
+    loop {
+        let mut ready = Vec::with_capacity(OUTCOMES_PER_TURN);
+        if outcomes.recv_many(&mut ready, OUTCOMES_PER_TURN).await == 0 {
+            break;
+        }
+        apply_ready(&sinks, ready).await;
+        tokio::task::yield_now().await;
     }
 }
 
-async fn apply_outcome(sinks: &OutcomeSinks, outcome: RetrievalOutcome) {
+async fn apply_ready(sinks: &OutcomeSinks, ready: Vec<RetrievalOutcome>) {
+    let mut ready = ready.into_iter().peekable();
+    while let Some(outcome) = ready.next() {
+        apply_outcome(sinks, outcome, &mut ready).await;
+    }
+}
+
+async fn apply_outcome(sinks: &OutcomeSinks, outcome: RetrievalOutcome, ready: &mut ReadyOutcomes) {
     match outcome {
         RetrievalOutcome::Started { context } => {
             lock(&sinks.state).apply_started(&context);
         }
         RetrievalOutcome::Progress { context, event } => {
-            let candidate = lock(&sinks.state).apply_progress(&context, &event);
-            crate::api::delivery::candidates::admit(sinks.candidates.as_ref(), candidate);
+            progress::apply(sinks, &context, *event, ready);
         }
         RetrievalOutcome::Completed {
             context,

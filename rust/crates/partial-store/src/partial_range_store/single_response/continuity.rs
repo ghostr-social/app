@@ -26,7 +26,8 @@ impl PartialRangeStore {
     ) -> Result<StagedCommitPolicy> {
         let continuity = self.durable_response_continuity(state, total).await?;
         Ok(StagedCommitPolicy {
-            preserve_revision: continuity == SparseContinuity::Confirmed,
+            preserve_revision: state.readable_prefix().is_some()
+                || continuity == SparseContinuity::Confirmed,
             retire_http: state.authority.retires_http_generation()
                 || continuity == SparseContinuity::Conflicted,
         })
@@ -86,7 +87,7 @@ impl PartialRangeStore {
     }
 }
 
-async fn checksums_match(path: &Path, checksums: &[IntervalChecksum]) -> Result<bool> {
+pub(super) async fn checksums_match(path: &Path, checksums: &[IntervalChecksum]) -> Result<bool> {
     for checksum in checksums {
         let observed = disk::sha256_span(path, &checksum.span()).await?;
         if observed != checksum.digest() {

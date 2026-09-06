@@ -76,13 +76,25 @@ mod origin_model_recovery_wrong_origin_test;
 mod origin_model_recovery_wrong_stage_test;
 #[path = "../../tests/origin_model_started_exploration_test.rs"]
 mod origin_model_started_exploration_test;
+#[path = "../../tests/warp_exhausted_watch_deadline_test.rs"]
+mod warp_exhausted_watch_deadline_test;
+#[path = "../../tests/warp_immediate_watch_progress_test.rs"]
+mod warp_immediate_watch_progress_test;
 #[path = "../../tests/watch_model_censoring_test.rs"]
 mod watch_model_censoring_test;
 #[path = "../../tests/watch_model_deadline_test.rs"]
 mod watch_model_deadline_test;
+#[path = "../../tests/watch_model_exhausted_deadline_test.rs"]
+mod watch_model_exhausted_deadline_test;
 #[path = "../../tests/watch_model_hierarchy_test.rs"]
 mod watch_model_hierarchy_test;
+#[path = "../../tests/watch_model_initial_rate_test.rs"]
+mod watch_model_initial_rate_test;
 #[path = "../../tests/watch_model_persistence_test.rs"]
 mod watch_model_persistence_test;
+#[path = "../../tests/watch_model_playback_rate_test.rs"]
+mod watch_model_playback_rate_test;
+#[path = "../../tests/watch_model_remaining_deadline_test.rs"]
+mod watch_model_remaining_deadline_test;
 #[path = "../../tests/watch_model_session_test.rs"]
 mod watch_model_session_test;

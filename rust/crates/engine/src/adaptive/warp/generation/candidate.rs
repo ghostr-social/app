@@ -1,19 +1,24 @@
-use super::allocation::{classify, resources, AllocationSpec};
-use super::builder::{Builder, NodeInput, TransferInput};
-use super::{GeneratedAction, PlannerCommand};
+use super::allocation::{classify, AllocationSpec};
+use super::builder::{Builder, TransferInput};
 use crate::adaptive::{
     ActionKind, Allocation, CandidateSnapshot, MediaLayout, PlayabilitySnapshot,
     PreemptionAuthority,
 };
 use crate::ByteRange;
 
+mod knowledge;
 mod transform;
 mod whole;
 
 impl Builder<'_> {
     pub(super) fn add_candidate(&mut self, candidate: &CandidateSnapshot) {
         self.add_head(candidate);
-        if !(0..=2).contains(&candidate.feed_offset.value()) || has_active_whole(candidate) {
+        if !self
+            .generation_policies
+            .navigation
+            .includes_payload(candidate.feed_offset)
+            || has_active_whole(candidate)
+        {
             self.add_active(candidate);
             return;
         }
@@ -28,34 +33,6 @@ impl Builder<'_> {
         self.add_cache_upgrade(candidate);
         self.add_transform(candidate, whole);
         self.add_active(candidate);
-    }
-
-    fn add_head(&mut self, candidate: &CandidateSnapshot) {
-        let head_suppressed = self
-            .context
-            .candidate(&candidate.post)
-            .is_some_and(|item| item.head_probe != super::super::HeadProbeHistory::Unobserved);
-        let current = candidate.post == self.snapshot.playback.current;
-        let in_window = (1..=8).contains(&candidate.feed_offset.value());
-        if !candidate.needs_bootstrap() || current || head_suppressed || !in_window {
-            return;
-        }
-        let kind = ActionKind::Head;
-        let Some(source) = self.optional_exploration_source(candidate, &kind) else {
-            return;
-        };
-        let prediction = self.prediction(candidate, &kind, source);
-        let input = NodeInput::new(kind.clone(), source, prediction, &[]).optional_exploration();
-        let mut node = self.node(candidate, input);
-        node.resources = resources(&kind);
-        self.actions.push(GeneratedAction {
-            node,
-            command: PlannerCommand::ProbeHead {
-                post: candidate.post.clone(),
-                source: source.to_owned(),
-                authority: super::allocation::authority(candidate, self.snapshot, self.base.mode),
-            },
-        });
     }
 
     fn add_base(&mut self, candidate: &CandidateSnapshot) {

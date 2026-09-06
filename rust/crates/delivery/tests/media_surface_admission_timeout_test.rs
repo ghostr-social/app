@@ -6,7 +6,7 @@ use ghostr_net::media_request_executor::MediaRequestAdmissionTimeout;
 
 #[tokio::test]
 async fn body_and_head_enforce_their_local_admission_deadline() {
-    let observed = fixture::exercise().await;
+    let observed = Box::pin(fixture::exercise()).await;
 
     assert!(observed.progressive.is::<MediaRequestAdmissionTimeout>());
     assert!(observed.head.is::<MediaRequestAdmissionTimeout>());

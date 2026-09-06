@@ -54,7 +54,7 @@ extension FeedCubitPreparation on FeedCubit {
     final accepted = _preparation.acceptWindow(
       plan,
       current.roster.active.media,
-      _upcomingMedia(current),
+      _preparationMedia(current),
     );
     if (accepted == null) return;
     emit(current.withPreparation(accepted));
@@ -66,7 +66,7 @@ extension FeedCubitPreparation on FeedCubit {
     return feed.withPreparation(
       _preparation.projectWindow(
         feed.roster.active.media,
-        _upcomingMedia(feed),
+        _preparationMedia(feed),
       ),
     );
   }
@@ -76,16 +76,18 @@ extension FeedCubitPreparation on FeedCubit {
     final preparation = _preparation.realignWindow(
       previous.preparation,
       moved.roster.active.media,
-      _upcomingMedia(moved),
+      _preparationMedia(moved),
     );
     return moved.withPreparation(preparation);
   }
 
-  List<VideoMediaSource> _upcomingMedia(FeedLoaded feed) {
-    return feed.posts
-        .skip(feed.activeIndex + 1)
-        .map((post) => post.media)
-        .toList(growable: false);
+  List<VideoMediaSource> _preparationMedia(FeedLoaded feed) {
+    final forward = feed.posts.skip(feed.activeIndex + 1);
+    final backward = feed.posts.take(feed.activeIndex).toList().reversed;
+    return [
+      for (final post in forward) post.media,
+      for (final post in backward) post.media,
+    ];
   }
 
   Future<void> _stopPreparationUpdates() async {

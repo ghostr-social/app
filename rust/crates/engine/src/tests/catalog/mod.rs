@@ -20,3 +20,4 @@ mod representation_identity_vector_test;
 mod transformed_representation_identity_test;
 
 mod catalog_parser_source_scope_test;
+mod catalog_request_selection_test;

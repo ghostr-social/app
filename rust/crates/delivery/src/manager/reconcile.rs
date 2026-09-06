@@ -99,7 +99,7 @@ impl DeliveryWorker {
         observed_at_ms: u64,
         planned: &PlannedWork,
         stored: &PlanningStoreState,
-    ) -> Vec<crate::startup_certificate::StartupCertificate> {
+    ) -> super::startup::PlaybackStartups {
         self.additional_request_slot_demand = planned
             .warp
             .as_ref()
@@ -109,14 +109,14 @@ impl DeliveryWorker {
         self.state
             .observe_discovery_demand(planned.discovery_demand);
         self.refresh_cache_registry(observed_at_ms).await;
-        self.startup_certificates(&planned.plan, &stored.snapshots)
+        self.startup_certificates(planned, &stored.snapshots)
     }
 
     fn publish_applied_plan(
         &self,
         observed_at_ms: u64,
         planned: &PlannedWork,
-        startups: Vec<crate::startup_certificate::StartupCertificate>,
+        startups: super::startup::PlaybackStartups,
         decision_sequence: Option<u64>,
     ) {
         let publication = crate::delivery_events::PlanPublicationContext::new(
@@ -124,6 +124,7 @@ impl DeliveryWorker {
             self.state.current_post(),
         )
         .with_player_preparations(planned.player_preparations.clone())
+        .with_previous_startups(startups.previous)
         .with_focus(
             self.state.focus_generation(),
             self.state.focus_covers_from(),
@@ -136,7 +137,7 @@ impl DeliveryWorker {
         self.commands.publish_causal_plan_with_startups(
             publication,
             planned.plan.clone(),
-            startups,
+            startups.forward,
         );
     }
 

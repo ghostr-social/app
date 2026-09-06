@@ -13,7 +13,7 @@ use ghostr_engine::PostId;
 pub(crate) use persistence::save_playback_learning;
 pub use persistence::{load_playback_learning, PlaybackLearningState};
 pub use stats::QoeStats;
-pub(crate) use watch::WatchLearner;
+pub(crate) use watch::{WatchLearner, WatchWindow};
 
 #[derive(Default)]
 pub struct QoeTracker {

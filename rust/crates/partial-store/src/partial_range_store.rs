@@ -39,6 +39,7 @@ mod sparse_intent;
 #[cfg(any(test, feature = "test"))]
 mod test_support;
 mod transform;
+mod transform_recovery;
 mod transient;
 mod writes;
 
@@ -84,6 +85,7 @@ pub struct PartialRangeStore {
     action_reservations: Mutex<action::ActionReservations>,
     cleanup_debts: Mutex<cleanup_debt::CleanupDebts>,
     content_revisions: Mutex<HashMap<String, u64>>,
+    transform_recovery: transform_recovery::TransformRecovery,
 }
 
 impl PartialRangeStore {
@@ -118,6 +120,7 @@ impl PartialRangeStore {
             action_reservations: Mutex::new(HashMap::new()),
             cleanup_debts: Mutex::new(cleanup_debt::CleanupDebts::new()),
             content_revisions: Mutex::new(HashMap::new()),
+            transform_recovery: transform_recovery::TransformRecovery::default(),
         }
     }
 

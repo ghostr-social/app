@@ -17,6 +17,7 @@ pub struct HttpObservation {
     pub(super) validator: Option<EvidenceValidator>,
     pub(super) final_url: Option<String>,
     pub(super) generation: Option<crate::representation::HttpGenerationLease>,
+    pub(super) request_selection: Option<crate::representation::RequestSelection>,
 }
 
 impl HttpObservation {
@@ -33,6 +34,7 @@ impl HttpObservation {
             validator,
             final_url: None,
             generation: None,
+            request_selection: None,
         }
     }
 
@@ -41,10 +43,19 @@ impl HttpObservation {
         self
     }
 
+    pub fn with_request_selection(
+        mut self,
+        selection: Option<crate::representation::RequestSelection>,
+    ) -> Self {
+        self.request_selection = selection;
+        self
+    }
+
     pub(super) fn with_generation(
         mut self,
         generation: crate::representation::HttpGenerationLease,
     ) -> Self {
+        self.request_selection = generation.key().request_selection();
         self.generation = Some(generation);
         self
     }

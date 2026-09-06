@@ -23,6 +23,7 @@ pub(super) struct Input<'a> {
 
 pub(super) struct Admission {
     actions: HashSet<ActionId>,
+    current_blockers: HashSet<ActionId>,
 }
 
 struct Candidate<'a> {
@@ -59,11 +60,18 @@ impl Admission {
                 Some(active.action_id())
             })
             .collect();
-        Self { actions }
+        Self {
+            actions,
+            current_blockers: budget::current_blockers(input),
+        }
     }
 
     pub(super) fn permits(&self, action: ActionId) -> bool {
         self.actions.contains(&action)
+    }
+
+    pub(super) fn blocks_current(&self, action: ActionId) -> bool {
+        self.current_blockers.contains(&action)
     }
 }
 

@@ -67,7 +67,9 @@ fn exact_resources(executed: &RecordedExecutedRequest) -> bool {
     let bytes = end.saturating_sub(start);
     executed.resources
         == RecordedResourceCost {
-            network_bytes: bytes,
+            network_bytes: if matches!(executed.request, RecordedRetrievalRequest::FetchWhole { .. }) {
+                bytes.min(crate::adaptive::REQUEST_SLICE_BYTES)
+            } else { bytes },
             storage_bytes: bytes,
             cpu_ms: 0,
             requests: 1,

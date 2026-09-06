@@ -22,9 +22,15 @@ pub(crate) fn temp_directory(prefix: &str) -> PathBuf {
         .expect("system clock")
         .as_nanos();
     let sequence = NEXT_TEMP_DIRECTORY.fetch_add(1, Ordering::Relaxed);
-    let path = std::env::temp_dir().join(format!("{prefix}-{nonce}-{sequence}"));
+    let path = store_artifacts().join(format!("{prefix}-{nonce}-{sequence}"));
     std::fs::create_dir_all(&path).expect("create test directory");
     path
+}
+
+fn store_artifacts() -> PathBuf {
+    std::env::var_os("CARGO_TARGET_DIR")
+        .map(|target| PathBuf::from(target).join("test-stores/delivery-unit"))
+        .unwrap_or_else(std::env::temp_dir)
 }
 
 pub(crate) fn transfer_identity(post: &PostId, url: &str) -> TransferIdentity {

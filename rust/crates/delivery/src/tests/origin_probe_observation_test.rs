@@ -28,6 +28,7 @@ async fn completed_head_probe_updates_the_head_context_only() {
             observed_at_ms,
         )),
         outcome: Ok(ProbeResult {
+            request_selection: None,
             final_url,
             observed: observed_at_ms.into(),
             content_length: Some(900_000),

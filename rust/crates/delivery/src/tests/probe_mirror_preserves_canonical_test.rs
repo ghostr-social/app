@@ -67,6 +67,7 @@ async fn mirror_head_cannot_replace_retained_canonical_bytes() {
 
 fn result() -> ProbeResult {
     ProbeResult {
+        request_selection: None,
         final_url: MIRROR.into(),
         observed: EvidenceTime::ordered(10, 1),
         content_length: Some(2_048),

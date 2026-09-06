@@ -97,12 +97,12 @@ impl MediaRequest {
         validate_request(&request, &self.route.authority)?;
         *request.method_mut() = self.method.unwrap_or(Method::GET);
         let maximum = super::body_limit::maximum(&request, self.maximum_body)?;
-        let mut lease = self
+        let lease = self
             .route
             .gate
             .acquire(self.route.authority, self.route.priority)
             .await?;
-        lease.reserve_body(maximum)?;
+        let lease = lease.reserve_body(maximum).await?;
         Ok(AdmittedMediaRequest {
             hop: AdmittedHop::new(client, request, lease),
             redirects: RedirectContext::new(

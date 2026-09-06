@@ -114,6 +114,14 @@ impl QoeKeeper {
         self.watch.model()
     }
 
+    pub(super) fn current_watch(&self, post: Option<&ghostr_engine::PostId>) -> Duration {
+        self.watch.current_watch(post)
+    }
+
+    pub(super) fn watch_window(&self) -> &crate::qoe::WatchWindow {
+        self.watch.window()
+    }
+
     pub fn schedule_save(&mut self, events: &UnboundedSender<InternalEvent>) {
         if !self.dirty || self.save_pending {
             return;

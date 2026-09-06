@@ -8,6 +8,7 @@ use ghostr_engine::{ByteRange, ChunkId, PostId};
 use std::collections::{HashMap, HashSet};
 
 mod hedge;
+mod body_renewal;
 mod http_generation;
 mod start;
 pub(crate) use start::PreparedTransfer;

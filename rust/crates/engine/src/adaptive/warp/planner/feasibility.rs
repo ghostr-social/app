@@ -4,9 +4,10 @@ use crate::adaptive::{
     ActionKind, ActionNode, HardBudget, PlannerCapability, PlayerPreparation, ReserveConstraint,
     SemanticCandidate, SemanticGuardrail,
 };
-use std::collections::BTreeSet;
 
+mod dependencies;
 mod hard_budget;
+mod preparation;
 mod rescue;
 mod reserve;
 
@@ -41,7 +42,9 @@ pub(super) fn apply(
     let nodes = frontier
         .iter()
         .filter(|node| {
-            node.post == input.snapshot.playback.current || semantically_admissible(node, &semantic)
+            node.post == input.snapshot.playback.current
+                || preparation::may_prepare(input, node, config.navigation_preparation_policy)
+                || semantically_admissible(node, &semantic)
         })
         .filter(|node| request_admitted(input, node))
         .filter(|node| budget.allows_node(node))
@@ -49,7 +52,7 @@ pub(super) fn apply(
         .cloned()
         .collect();
     FeasibleActions {
-        nodes: with_satisfied_dependencies(nodes),
+        nodes: dependencies::satisfied(nodes),
         budget,
         reserve,
         semantic,
@@ -184,15 +187,4 @@ fn semantically_admissible(node: &ActionNode, semantic: &[SemanticDecision]) -> 
         node.kind,
         ActionKind::Cancel(_) | ActionKind::Promote { .. }
     ) || admissible(&node.post, semantic)
-}
-
-fn with_satisfied_dependencies(mut nodes: Vec<ActionNode>) -> Vec<ActionNode> {
-    loop {
-        let ids: BTreeSet<_> = nodes.iter().map(|node| node.id).collect();
-        let before = nodes.len();
-        nodes.retain(|node| node.requires.iter().all(|id| ids.contains(id)));
-        if nodes.len() == before {
-            return nodes;
-        }
-    }
 }

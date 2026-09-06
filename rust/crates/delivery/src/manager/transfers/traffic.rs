@@ -11,6 +11,8 @@ use ghostr_partial_store::partial_range_store::StoreAction;
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::time::Instant;
 
+mod body_renewal;
+
 pub(super) struct TransferTraffic {
     attempt: ChunkAttempt,
     transfer: TransferKey,
@@ -50,7 +52,8 @@ impl ChunkTraffic for TransferTraffic {
     }
 
     fn opened(&mut self, ttfb: Duration) {
-        let Some(host) = self.host.take() else {
+        if self.opened { return; }
+        let Some(host) = self.host.clone() else {
             return;
         };
         self.opened = self
@@ -72,6 +75,12 @@ impl ChunkTraffic for TransferTraffic {
         let observed = ObservedResponse::at_network_boundary(self.attempt.clone(), response);
         let event = TransferEvent::ResponseObserved(Box::new(observed));
         let _ = self.events.send(InternalEvent::Transfer(event));
+    }
+
+    fn authorize_body<'a>(
+        &'a mut self, through: u64,
+    ) -> Pin<Box<dyn Future<Output = anyhow::Result<()>> + Send + 'a>> {
+        Box::pin(self.authorize_body_window(through))
     }
 
     fn authorize_response<'a>(

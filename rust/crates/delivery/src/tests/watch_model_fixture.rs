@@ -51,7 +51,7 @@ pub(super) fn playback(
     }
 }
 
-fn item(id: &str) -> FocusItem {
+pub(super) fn item(id: &str) -> FocusItem {
     FocusItem {
         post: PostId::new(id),
         meta: VideoMeta {

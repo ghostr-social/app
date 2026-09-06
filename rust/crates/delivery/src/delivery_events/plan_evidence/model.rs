@@ -19,6 +19,7 @@ pub struct PlanEvidence {
     pub player_preparations: Vec<PlayerPreparationClaim>,
     pub plan: AllocationPlan,
     pub startups: Vec<StartupCertificate>,
+    pub previous_startups: Vec<StartupCertificate>,
 }
 
 pub(crate) struct PlanPublicationContext {
@@ -30,6 +31,7 @@ pub(crate) struct PlanPublicationContext {
     pub(super) network_status: DeliveryNetworkStatus,
     pub(super) network_profile_generation: u64,
     pub(super) player_preparations: Vec<PlayerPreparationClaim>,
+    pub(super) previous_startups: Vec<StartupCertificate>,
 }
 
 impl PlanPublicationContext {
@@ -43,11 +45,17 @@ impl PlanPublicationContext {
             network_status: DeliveryNetworkStatus::unavailable(),
             network_profile_generation: 0,
             player_preparations: Vec::new(),
+            previous_startups: Vec::new(),
         }
     }
 
     pub(crate) const fn with_decision_sequence(mut self, sequence: Option<u64>) -> Self {
         self.decision_sequence = sequence;
+        self
+    }
+
+    pub(crate) fn with_previous_startups(mut self, startups: Vec<StartupCertificate>) -> Self {
+        self.previous_startups = startups;
         self
     }
 

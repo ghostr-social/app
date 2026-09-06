@@ -5,7 +5,7 @@ use core::time::Duration;
 use ghostr_engine::representation::RepresentationBinding;
 use ghostr_partial_store::partial_range_store::{ContentRevision, StoredMediaSnapshot};
 use std::sync::Arc;
-use tokio::sync::Mutex;
+use tokio::sync::{Mutex, Notify};
 use tokio::time::Instant;
 
 mod state;
@@ -58,6 +58,7 @@ impl ProgressiveCapabilityLimits {
 pub struct ProgressiveCapabilities {
     limits: ProgressiveCapabilityLimits,
     state: Arc<Mutex<CapabilityState>>,
+    changed: Arc<Notify>,
 }
 
 impl ProgressiveCapabilities {
@@ -71,6 +72,7 @@ impl ProgressiveCapabilities {
         Self {
             limits,
             state: Arc::new(Mutex::new(CapabilityState::default())),
+            changed: Arc::new(Notify::new()),
         }
     }
 
@@ -89,11 +91,31 @@ impl ProgressiveCapabilities {
             return Ok(id);
         }
         state.make_room(self.limits.capacity);
-        Ok(state.insert(authority, now))
+        let id = state.insert(authority, now);
+        drop(state);
+        self.changed.notify_waiters();
+        Ok(id)
+    }
+
+    /// Observes an issued capability without minting, refreshing, or evicting a live lease.
+    pub async fn existing(
+        &self,
+        snapshot: &StoredMediaSnapshot,
+    ) -> Option<ProgressiveCapabilityId> {
+        let authority = ProgressiveAssetAuthority::capture(snapshot)?;
+        let mut state = self.state.lock().await;
+        state.prune(Instant::now(), self.limits.idle_ttl);
+        state.existing(&authority)
+    }
+
+    /// Wakes observers when playback issues a new capability or clears all leases.
+    pub fn notifier(&self) -> Arc<Notify> {
+        Arc::clone(&self.changed)
     }
 
     pub(crate) async fn clear(&self) {
         *self.state.lock().await = CapabilityState::default();
+        self.changed.notify_waiters();
     }
 
     pub async fn recognizes(&self, raw: &str, post: &str) -> bool {

@@ -9,18 +9,18 @@ impl FeedStore {
         }
     }
 
-    /// Merges one relay event while its retrieval remains in flight.
+    /// Merges a ready relay burst while its retrieval remains in flight.
     /// Full canonical selection keeps arrival order from changing the feed.
     pub fn ingest_progress(
         &mut self,
         feed: FeedId,
-        fetched: ParsedVideoPost,
+        fetched: Vec<ParsedVideoPost>,
         graph: &SocialGraph,
     ) -> bool {
         let Some(open) = self.feeds.get_mut(&feed) else {
             return false;
         };
-        open.add_occurrences(vec![fetched], graph)
+        open.add_occurrences(fetched, graph)
     }
 
     /// Reconciles one full head refresh without moving the historical cursor.

@@ -92,8 +92,9 @@ pub(crate) use warp::{
     WarpSearch,
 };
 pub(crate) use warp::{
-    HlsGenerationPolicy, OriginAdmissionGenerationPolicy, PlannerReplayCapsule,
-    PromotionGenerationPolicy, RangeAliasGenerationPolicy, WarpGenerationPolicies,
+    HlsGenerationPolicy, NavigationPreparationPolicy, OriginAdmissionGenerationPolicy,
+    PlannerReplayCapsule, PromotionGenerationPolicy, RangeAliasGenerationPolicy,
+    WarpGenerationPolicies,
 };
 
 #[cfg(test)]

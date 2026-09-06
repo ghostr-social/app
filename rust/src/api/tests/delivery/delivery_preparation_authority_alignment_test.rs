@@ -75,7 +75,10 @@ async fn delivery_and_preparation_share_exact_asset_authority() {
         },
     ));
 
-    let event = receive(&mut delivery_rx).await;
+    let mut event = receive(&mut delivery_rx).await;
+    while event.asset_id.is_none() {
+        event = receive(&mut delivery_rx).await;
+    }
     let plan = receive(&mut preparation_rx).await;
     let asset = plan.current.expect("current asset");
     assert_eq!(event.representation_id, Some(asset.representation_id));

@@ -1,8 +1,6 @@
 //! Bounded, volatile whole-response playback buffers for no-store media.
 //! Neither verified content hashes nor a normal EOF promote them to disk.
-use super::single_response::{
-    ResponseOwner, SingleResponseAuthority, SingleResponseState, SingleResponseStorage,
-};
+use super::single_response::SingleResponseState;
 use super::{Entries, PartialRangeStore, ResponseOpenResult, StoreAction};
 use anyhow::{ensure, Context as _, Result};
 use ghostr_engine::adaptive::WholeBodyContract;
@@ -88,13 +86,7 @@ impl PartialRangeStore {
     ) {
         self.single_response_actions.lock().await.insert(
             identity.post().as_str().to_owned(),
-            SingleResponseState {
-                identity: identity.clone(),
-                owner: ResponseOwner::Granted(action.clone()),
-                contract,
-                authority: SingleResponseAuthority::ActionScoped,
-                storage: SingleResponseStorage::Memory,
-            },
+            SingleResponseState::transient(identity.clone(), action.clone(), contract),
         );
         self.selected()
             .insert(identity.post().as_str().to_owned(), identity.clone());

@@ -52,6 +52,7 @@ void main() {
 
       loaded = cubit.state as FeedLoaded;
       expect(loaded.posts.map((post) => post.id.value), [
+        'post-0',
         'post-1',
         'post-2',
         'post-3',

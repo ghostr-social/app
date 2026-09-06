@@ -56,7 +56,7 @@ impl StartupCertificate {
         })
     }
 
-    fn post(&self) -> &PostId {
+    pub fn post(&self) -> &PostId {
         self.binding.post()
     }
 

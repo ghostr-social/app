@@ -39,6 +39,8 @@ impl PartialRangeStore {
     ) -> Result<bool> {
         let _update = self.update_key(identity.post().as_str()).await?;
         let Some(state) = self.single_response_for_finish(identity, owner).await else {
+            self.retry_inactive_single_response_locked(identity.post().as_str())
+                .await?;
             return Ok(false);
         };
         let binding = self.current_binding(identity).await?;

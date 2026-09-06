@@ -6,12 +6,17 @@ use ghostr_net::media_request_executor::MediaResponse;
 use ghostr_net::strong_etag::single_strong_etag;
 use reqwest::header::{CONTENT_TYPE, LAST_MODIFIED};
 
+#[cfg(test)]
+#[path = "generation/live_selection_test.rs"]
+mod live_selection_test;
+
 /// Response identity inspected before any sparse bytes are exposed.
 pub struct OriginGeneration {
     final_url: String,
     strong_etag: Option<String>,
     total_bytes: Option<u64>,
     retention: ghostr_net::media_retention::MediaRetention,
+    request_selection: Option<ghostr_engine::representation::RequestSelection>,
 }
 
 impl HttpResponseEvidence {
@@ -29,6 +34,7 @@ impl HttpResponseEvidence {
             || header(headers, &LAST_MODIFIED).and_then(EvidenceValidator::last_modified);
         Self {
             final_url: response.url().to_string(),
+            request_selection: response.request_selection(),
             status: response.status().as_u16(),
             content_type: header(headers, &CONTENT_TYPE),
             validator: etag.or_else(modified),
@@ -47,10 +53,8 @@ impl OriginGeneration {
             final_url: response.url().to_string(),
             strong_etag,
             total_bytes,
-            retention: ghostr_net::media_retention::MediaRetention::from_headers(
-                response.headers(),
-                response.url(),
-            ),
+            retention: response.retention(),
+            request_selection: response.request_selection(),
         }
     }
 
@@ -67,6 +71,7 @@ impl OriginGeneration {
             .total_bytes
             .ok_or_else(|| anyhow::anyhow!("sparse response needs a complete length"))?;
         SourceGeneration::try_new(&self.final_url, etag, total)
+            .map(|generation| generation.with_request_selection(self.request_selection))
             .context("invalid sparse response generation")
     }
 

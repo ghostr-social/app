@@ -1,7 +1,7 @@
 use crate::partial_range_completion::{self as completion, Completion, IntegrityMismatch};
 use crate::partial_range_store::single_response::SessionResponse;
 use crate::partial_range_store::{Entries, PartialRangeStore};
-use anyhow::Result;
+use anyhow::{ensure, Result};
 
 pub(super) async fn finalize(
     store: &PartialRangeStore,
@@ -10,6 +10,10 @@ pub(super) async fn finalize(
     advertised: Option<&str>,
     response: &SessionResponse,
 ) -> Result<Completion> {
+    ensure!(
+        response.is_complete(),
+        "cannot finalize an active response before EOF"
+    );
     let Some(advertised) = advertised else {
         return Ok(Completion::Unverified);
     };
